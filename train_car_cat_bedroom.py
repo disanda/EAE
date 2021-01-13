@@ -36,13 +36,13 @@ def train(avg_tensor = None, coefs=0):
 	loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 	loss_kl = torch.nn.KLDivLoss()
 
-	batch_size = 5
+	batch_size = 4
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
 		set_seed(epoch%25000)
 		latents = torch.randn(batch_size, 512) #[32, 512]
-		w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
 		with torch.no_grad(): #这里需要生成图片和变量
+			w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
 			imgs1 = Gs.forward(w1,7)
 
 		const2,w2 = E(imgs1.cuda())
@@ -123,7 +123,7 @@ def train(avg_tensor = None, coefs=0):
 		print('-')
 
 		if epoch % 100 == 0:
-			test_img = torch.cat((imgs1[:5],imgs2[:5]))*0.5+0.5
+			test_img = torch.cat((imgs1[:5],imgs2[:5]),nrow=5)*0.5+0.5
 			torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=3) # nrow=3
 			with open(resultPath+'/Loss.txt', 'a+') as f:
 				print('i_'+str(epoch)+'--loss_all__:'+str(loss_all.item())+'--loss_mse:'+str(loss_img_mse.item())+'--loss_lpips:'+str(loss_img_lpips.item())+'--loss_kl_img:'+str(loss_kl_img.item()),file=f)
