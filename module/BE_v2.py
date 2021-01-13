@@ -89,6 +89,7 @@ class BE(nn.Module):
         self.latent_size = latent_size
         self.layer_to_resolution = [0 for _ in range(layer_count)]
         self.decode_block = nn.ModuleList()
+        self.layer_count = layer_count
         inputs = startf # 16 
         outputs = startf*2
         resolution = 1024
@@ -113,7 +114,7 @@ class BE(nn.Module):
         self.FromRGB = from_RGB
 
     #将w逆序，以保证和G的w顺序, block_num控制progressive
-    def forward(self, x, block_num=9):
+    def forward(self, x, block_num=self.layer_count):
         x = self.FromRGB[9-block_num](x)
         w = torch.tensor(0)
         for i in range(9-block_num,9):

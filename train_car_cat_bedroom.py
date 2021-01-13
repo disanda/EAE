@@ -22,7 +22,7 @@ def train(avg_tensor = None, coefs=0):
 	Gm = Mapping(num_layers=16, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512)
 	Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth')) 
 	Gm.buffer1 = avg_tensor
-	E = BE.BE()
+	E = BE.BE(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3)
 
 	Gs.cuda()
 	#Gm.cuda()
