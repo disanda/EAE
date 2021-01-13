@@ -36,7 +36,7 @@ def train(avg_tensor = None, coefs=0):
 	loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 	loss_kl = torch.nn.KLDivLoss()
 
-	batch_size = 5
+	batch_size = 4
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
 		set_seed(epoch%25000)
@@ -123,7 +123,7 @@ def train(avg_tensor = None, coefs=0):
 		print('-')
 
 		if epoch % 100 == 0:
-			test_img = torch.cat((imgs1[:5],imgs2[:5]))*0.5+0.5
+			test_img = torch.cat((imgs1[:4],imgs2[:4]))*0.5+0.5
 			torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=5) # nrow=3
 			with open(resultPath+'/Loss.txt', 'a+') as f:
 				print('i_'+str(epoch)+'--loss_all__:'+str(loss_all.item())+'--loss_mse:'+str(loss_img_mse.item())+'--loss_lpips:'+str(loss_img_lpips.item())+'--loss_kl_img:'+str(loss_kl_img.item()),file=f)
