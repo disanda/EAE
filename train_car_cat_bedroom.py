@@ -36,7 +36,7 @@ def train(avg_tensor = None, coefs=0):
 	loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 	loss_kl = torch.nn.KLDivLoss()
 
-	batch_size = 3
+	batch_size = 5
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
 		set_seed(epoch%25000)
@@ -64,16 +64,16 @@ def train(avg_tensor = None, coefs=0):
 		loss_kl_img = torch.where(torch.isnan(loss_kl_img),torch.full_like(loss_kl_img,0), loss_kl_img)
 		loss_kl_img = torch.where(torch.isinf(loss_kl_img),torch.full_like(loss_kl_img,1), loss_kl_img)
 
-		loss_1 = 13*loss_img_mse+ 5*loss_img_lpips + loss_kl_img
+		loss_1 = 5*loss_img_mse + loss_img_lpips + loss_kl_img
 		loss_1.backward(retain_graph=True)
 		E_optimizer.step()
 #loss2
-		imgs_column1 = imgs1[:,:,:,imgs1.shape[3]//4:-imgs1.shape[3]//4]
-		imgs_column2 = imgs2[:,:,:,imgs2.shape[3]//4:-imgs2.shape[3]//4]
+		imgs_column1 = imgs1[:,:,:,imgs1.shape[3]//5:-imgs1.shape[3]//5]
+		imgs_column2 = imgs2[:,:,:,imgs2.shape[3]//5:-imgs2.shape[3]//5]
 		loss_img_mse_column = loss_mse(imgs_column1,imgs_column2)
 		loss_img_lpips_column = loss_lpips(imgs_column1,imgs_column2).mean()
 
-		loss_2 = 19*loss_img_mse_column +7*loss_img_lpips_column
+		loss_2 = 7*loss_img_mse_column +3*loss_img_lpips_column
 		loss_2.backward(retain_graph=True)
 		E_optimizer.step()
 #loss3
@@ -86,7 +86,7 @@ def train(avg_tensor = None, coefs=0):
 		# imgs_blob2 = imgs2[:,:,924:,924:]
 		# loss_img_mse_blob = loss_mse(imgs_blob1,imgs_blob2)
 
-		loss_3 = 23*loss_img_mse_center +11*loss_img_lpips_center #+ loss_img_mse_blob
+		loss_3 = 9*loss_img_mse_center +5*loss_img_lpips_center #+ loss_img_mse_blob
 		loss_3.backward(retain_graph=True)
 		#loss_x = loss_1+loss_2+loss_3
 		#loss_x.backward(retain_graph=True)
@@ -123,7 +123,7 @@ def train(avg_tensor = None, coefs=0):
 		print('-')
 
 		if epoch % 100 == 0:
-			test_img = torch.cat((imgs1[:3],imgs2[:3]))*0.5+0.5
+			test_img = torch.cat((imgs1[:5],imgs2[:5]))*0.5+0.5
 			torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=3) # nrow=3
 			with open(resultPath+'/Loss.txt', 'a+') as f:
 				print('i_'+str(epoch)+'--loss_all__:'+str(loss_all.item())+'--loss_mse:'+str(loss_img_mse.item())+'--loss_lpips:'+str(loss_img_lpips.item())+'--loss_kl_img:'+str(loss_kl_img.item()),file=f)
