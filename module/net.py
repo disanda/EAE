@@ -265,7 +265,7 @@ class Generator(nn.Module):
         mul = 2**(self.layer_count-1) # mul =  4, 8, 16, 32 ... | layer_count=6 -> 128*128
 
         inputs = min(self.maxf, startf * mul)
-        self.const = Parameter(torch.Tensor(1, inputs, 4, 4)) #[1,512,4,4]
+        self.const = Parameter(torch.Tensor(1, inputs, 2, 2)) #[1,512,4,4]->1024 / [1,512,2,2]->512
         self.zeros = torch.zeros(1, 1, 1, 1)
         init.ones_(self.const)
 
