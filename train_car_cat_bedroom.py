@@ -92,6 +92,9 @@ def train(avg_tensor = None, coefs=0):
 		#loss_x.backward(retain_graph=True)
 		E_optimizer.step()
 #loss4
+		print('const!!!!!!!')
+		print(const1.shape)
+		print(const2.shape)
 		loss_c = loss_mse(const1,const2) #没有这个const，梯度起初没法快速下降，很可能无法收敛, 这个惩罚即乘0.1后,效果大幅提升！
 		loss_c_m = loss_mse(const1.mean(),const2.mean())
 		loss_c_s = loss_mse(const1.std(),const2.std())
