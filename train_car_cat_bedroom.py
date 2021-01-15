@@ -23,7 +23,7 @@ def train(avg_tensor = None, coefs=0):
 	Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth')) 
 	Gm.buffer1 = avg_tensor
 	E = BE.BE(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3)
-
+	E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cars_v1/models/E_model_ep135000.pth'))
 	Gs.cuda()
 	#Gm.cuda()
 	E.cuda()
@@ -39,7 +39,7 @@ def train(avg_tensor = None, coefs=0):
 	batch_size = 4
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
-		set_seed(epoch%25000)
+		set_seed(epoch%30000)
 		latents = torch.randn(batch_size, 512) #[32, 512]
 		with torch.no_grad(): #这里需要生成图片和变量
 			w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
@@ -64,21 +64,21 @@ def train(avg_tensor = None, coefs=0):
 		loss_kl_img = torch.where(torch.isnan(loss_kl_img),torch.full_like(loss_kl_img,0), loss_kl_img)
 		loss_kl_img = torch.where(torch.isinf(loss_kl_img),torch.full_like(loss_kl_img,1), loss_kl_img)
 
-		loss_1 = 5*loss_img_mse + loss_img_lpips + loss_kl_img
+		loss_1 = 5*loss_img_mse + 3*loss_img_lpips + loss_kl_img
 		loss_1.backward(retain_graph=True)
 		E_optimizer.step()
 #loss2
-		imgs_column1 = imgs1[:,:,:,imgs1.shape[3]//5:-imgs1.shape[3]//5]
-		imgs_column2 = imgs2[:,:,:,imgs2.shape[3]//5:-imgs2.shape[3]//5]
+		imgs_column1 = imgs1[:,:,imgs1.shape[2]//5:-imgs1.shape[2]//5,:] # w,h
+		imgs_column2 = imgs2[:,:,imgs2.shape[2]//5:-imgs2.shape[2]//5,:]
 		loss_img_mse_column = loss_mse(imgs_column1,imgs_column2)
 		loss_img_lpips_column = loss_lpips(imgs_column1,imgs_column2).mean()
 
-		loss_2 = 7*loss_img_mse_column +3*loss_img_lpips_column
+		loss_2 = 9*loss_img_mse_column +5*loss_img_lpips_column
 		loss_2.backward(retain_graph=True)
 		E_optimizer.step()
 #loss3
-		imgs_center1 = imgs1[:,:,imgs1.shape[2]//4:-imgs1.shape[2]//4,imgs1.shape[3]//4:-imgs1.shape[3]//4]
-		imgs_center2 = imgs2[:,:,imgs2.shape[2]//4:-imgs2.shape[2]//4,imgs2.shape[3]//4:-imgs2.shape[3]//4]
+		imgs_center1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10]
+		imgs_center2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10]
 		loss_img_mse_center = loss_mse(imgs_center1,imgs_center2)
 		loss_img_lpips_center = loss_lpips(imgs_center1,imgs_center2).mean()
 
@@ -86,7 +86,7 @@ def train(avg_tensor = None, coefs=0):
 		# imgs_blob2 = imgs2[:,:,924:,924:]
 		# loss_img_mse_blob = loss_mse(imgs_blob1,imgs_blob2)
 
-		loss_3 = 9*loss_img_mse_center +5*loss_img_lpips_center #+ loss_img_mse_blob
+		loss_3 = 13*loss_img_mse_center +7*loss_img_lpips_center #+ loss_img_mse_blob
 		loss_3.backward(retain_graph=True)
 		#loss_x = loss_1+loss_2+loss_3
 		#loss_x.backward(retain_graph=True)
@@ -136,7 +136,7 @@ def train(avg_tensor = None, coefs=0):
 				#torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-	resultPath = "./result/EB_cars_v1"
+	resultPath = "./result/EB_cars_v2"
 	if not os.path.exists(resultPath): os.mkdir(resultPath)
 
 	resultPath1_1 = resultPath+"/imgs"
