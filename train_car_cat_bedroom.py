@@ -146,14 +146,13 @@ if __name__ == "__main__":
 	resultPath1_2 = resultPath+"/models"
 	if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
-	# center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
-	# layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
-	# layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
-	# ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
-	# coefs = torch.where(layer_idx < 8, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
-	#print(coefs.shape)
+	center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
+	layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
+	layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
+	ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
+	coefs_ = torch.where(layer_idx < 8, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
 
-	train(avg_tensor=None,coefs=0)
+	train(avg_tensor=center_tensor,coefs=coefs_)
 
 
 
