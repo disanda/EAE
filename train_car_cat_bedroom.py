@@ -17,12 +17,12 @@ def set_seed(seed): #随机数设置
 	torch.backends.cudnn.deterministic = True
 
 def train(avg_tensor = None, coefs=0):
-	Gs = Generator(startf=16, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 16->256 layer_count=7
+	Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
 	Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
 	Gm = Mapping(num_layers=16, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512)
 	Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
 	Gm.buffer1 = avg_tensor
-	E = BE.BE(startf=16, maxf=512, layer_count=7, latent_size=512, channels=3)
+	E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 	#E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cars_v1/models/E_model_ep135000.pth'))
 	Gs.cuda()
 	#Gm.cuda()
