@@ -17,13 +17,13 @@ def set_seed(seed): #随机数设置
 	torch.backends.cudnn.deterministic = True
 
 def train(avg_tensor = None, coefs=0):
-	Gs = Generator(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3) # 512
-	Gs.load_state_dict(torch.load('./pre-model/cars/cars512_Gs_dict.pth'))
+	Gs = Generator(startf=16, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 16->256 layer_count=7
+	Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
 	Gm = Mapping(num_layers=16, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512)
-	Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth')) 
+	Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
 	Gm.buffer1 = avg_tensor
-	E = BE.BE(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3)
-	E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cars_v1/models/E_model_ep135000.pth'))
+	E = BE.BE(startf=16, maxf=512, layer_count=7, latent_size=512, channels=3)
+	#E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cars_v1/models/E_model_ep135000.pth'))
 	Gs.cuda()
 	#Gm.cuda()
 	E.cuda()
@@ -36,18 +36,18 @@ def train(avg_tensor = None, coefs=0):
 	loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 	loss_kl = torch.nn.KLDivLoss()
 
-	batch_size = 4
+	batch_size = 6
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
 		set_seed(epoch%30000)
 		latents = torch.randn(batch_size, 512) #[32, 512]
 		with torch.no_grad(): #这里需要生成图片和变量
 			w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
-			imgs1 = Gs.forward(w1,7)
+			imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
 
 		const2,w2 = E(imgs1.cuda())
 
-		imgs2=Gs.forward(w2,7)
+		imgs2=Gs.forward(w2,6)
 
 		E_optimizer.zero_grad()
 #loss1
@@ -136,7 +136,7 @@ def train(avg_tensor = None, coefs=0):
 				#torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-	resultPath = "./result/EB_cars_v2"
+	resultPath = "./result/EB_cat_v1"
 	if not os.path.exists(resultPath): os.mkdir(resultPath)
 
 	resultPath1_1 = resultPath+"/imgs"
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 	resultPath1_2 = resultPath+"/models"
 	if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
-	center_tensor = torch.load('./pre-model/cars/cars512-center_tensor.pt')
+	center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
 	layer_idx = torch.arange(16)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
 	ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
 	coefs = torch.where(layer_idx < 8, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
