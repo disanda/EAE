@@ -153,7 +153,7 @@ if __name__ == "__main__":
 	# coefs = torch.where(layer_idx < 8, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
 	#print(coefs.shape)
 
-	train(center_tensor,coefs=0)
+	train(avg_tensor=None,coefs=0)
 
 
 
