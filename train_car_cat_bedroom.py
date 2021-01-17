@@ -19,7 +19,7 @@ def set_seed(seed): #随机数设置
 def train(avg_tensor = None, coefs=0):
 	Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
 	Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
-	Gm = Mapping(num_layers=16, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512)
+	Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
 	Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
 	Gm.buffer1 = avg_tensor
 	E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
