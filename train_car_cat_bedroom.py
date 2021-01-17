@@ -36,7 +36,7 @@ def train(avg_tensor = None, coefs=0):
 	loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 	loss_kl = torch.nn.KLDivLoss()
 
-	batch_size = 6
+	batch_size = 10
 	const1 = const_.repeat(batch_size,1,1,1)
 	for epoch in range(0,250001):
 		set_seed(epoch%30000)
@@ -123,8 +123,9 @@ def train(avg_tensor = None, coefs=0):
 		print('-')
 
 		if epoch % 100 == 0:
-			test_img = torch.cat((imgs1[:batch_size],imgs2[:batch_size]))*0.5+0.5
-			torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=batch_size) # nrow=3
+			n_row = 6
+			test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
+			torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
 			with open(resultPath+'/Loss.txt', 'a+') as f:
 				print('i_'+str(epoch)+'--loss_all__:'+str(loss_all.item())+'--loss_mse:'+str(loss_img_mse.item())+'--loss_lpips:'+str(loss_img_lpips.item())+'--loss_kl_img:'+str(loss_kl_img.item()),file=f)
 				print('loss_img_mse_column:'+str(loss_img_mse_column.item())+'loss_img_lpips_column:'+str(loss_img_lpips_column.item())\
@@ -150,7 +151,7 @@ if __name__ == "__main__":
 	layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
 	ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
 	coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
-	print(coefs.shape)
+	#print(coefs.shape)
 
 	train(center_tensor,coefs)
 
