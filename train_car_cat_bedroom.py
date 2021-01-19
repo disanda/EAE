@@ -24,6 +24,7 @@ def train(avg_tensor = None, coefs=0):
 	Gm.buffer1 = avg_tensor
 	E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 	#E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cars_v1/models/E_model_ep135000.pth'))
+	E.load_state_dict(torch.load('/_yucheng/myStyle/EAE/result/EB_cat_v1/models/E_model_ep165000.pth'))
 	Gs.cuda()
 	#Gm.cuda()
 	E.cuda()
@@ -51,11 +52,11 @@ def train(avg_tensor = None, coefs=0):
 
 		E_optimizer.zero_grad()
 #loss1
-		#loss_img_mse = loss_mse(imgs1,imgs2)
-		loss_img_mse_c1 = loss_mse(imgs1[:,0],imgs2[:,0])
-		loss_img_mse_c2 = loss_mse(imgs1[:,1],imgs2[:,1])
-		loss_img_mse_c3 = loss_mse(imgs1[:,2],imgs2[:,2])
-		loss_img_mse = max(loss_img_mse_c1,loss_img_mse_c2,loss_img_mse_c3)
+		loss_img_mse = loss_mse(imgs1,imgs2)
+		# loss_img_mse_c1 = loss_mse(imgs1[:,0],imgs2[:,0])
+		# loss_img_mse_c2 = loss_mse(imgs1[:,1],imgs2[:,1])
+		# loss_img_mse_c3 = loss_mse(imgs1[:,2],imgs2[:,2])
+		# loss_img_mse = max(loss_img_mse_c1,loss_img_mse_c2,loss_img_mse_c3)
 
 		loss_img_lpips = loss_lpips(imgs1,imgs2).mean()
 
@@ -64,16 +65,16 @@ def train(avg_tensor = None, coefs=0):
 		loss_kl_img = torch.where(torch.isnan(loss_kl_img),torch.full_like(loss_kl_img,0), loss_kl_img)
 		loss_kl_img = torch.where(torch.isinf(loss_kl_img),torch.full_like(loss_kl_img,1), loss_kl_img)
 
-		loss_1 = 5*loss_img_mse + 3*loss_img_lpips + loss_kl_img
+		loss_1 = 17*loss_img_mse + 5*loss_img_lpips + loss_kl_img
 		loss_1.backward(retain_graph=True)
 		E_optimizer.step()
 #loss2
-		imgs_column1 = imgs1[:,:,imgs1.shape[2]//5:-imgs1.shape[2]//5,:] # w,h
-		imgs_column2 = imgs2[:,:,imgs2.shape[2]//5:-imgs2.shape[2]//5,:]
+		imgs_column1 = imgs1[:,:,imgs1.shape[2]//20:-imgs1.shape[2]//20,imgs1.shape[3]//20:-imgs1.shape[3]//20] # w,h
+		imgs_column2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20]
 		loss_img_mse_column = loss_mse(imgs_column1,imgs_column2)
 		loss_img_lpips_column = loss_lpips(imgs_column1,imgs_column2).mean()
 
-		loss_2 = 9*loss_img_mse_column +5*loss_img_lpips_column
+		loss_2 = 5*loss_img_mse_column + 3*loss_img_lpips_column
 		loss_2.backward(retain_graph=True)
 		E_optimizer.step()
 #loss3
@@ -86,7 +87,7 @@ def train(avg_tensor = None, coefs=0):
 		# imgs_blob2 = imgs2[:,:,924:,924:]
 		# loss_img_mse_blob = loss_mse(imgs_blob1,imgs_blob2)
 
-		loss_3 = 13*loss_img_mse_center +7*loss_img_lpips_center #+ loss_img_mse_blob
+		loss_3 = 3*loss_img_mse_center + loss_img_lpips_center #+ loss_img_mse_blob
 		loss_3.backward(retain_graph=True)
 		#loss_x = loss_1+loss_2+loss_3
 		#loss_x.backward(retain_graph=True)
@@ -137,7 +138,7 @@ def train(avg_tensor = None, coefs=0):
 				#torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-	resultPath = "./result/EB_cat_v1"
+	resultPath = "./result/EB_cat_v2"
 	if not os.path.exists(resultPath): os.mkdir(resultPath)
 
 	resultPath1_1 = resultPath+"/imgs"
