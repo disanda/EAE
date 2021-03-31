@@ -2,7 +2,7 @@ import os
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
-import module.BE_v2 as BE
+import module.EAE_model.BE_v2 as BE
 from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
