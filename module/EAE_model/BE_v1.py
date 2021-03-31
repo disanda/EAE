@@ -9,6 +9,7 @@ from module.net import Blur,FromRGB,downscale2d
 from torch.nn import functional as F
 
 # G 改 E, 实际上需要用G Block改出E block, 完成逆序对称，在同样位置还原style潜码
+# 比第0版多了残差, 每一层的两个(conv/line)输出的w1和w2合并为1个w
 class BEBlock(nn.Module):
     def __init__(self, inputs, outputs, latent_size, has_last_conv=True, fused_scale=True): #分辨率大于128用fused_scale,即conv完成上采样
         super().__init__()
