@@ -94,7 +94,9 @@ def train(avg_tensor = None, coefs=0):
         #E_optimizer.step()
 
 #loss3_v2, cosine相似性
-        loss_cosine_i = imgs1.dot(imgs2)/(torch.sqrt(imgs1.dot(imgs1))*torch.sqrt(imgs2.dot(imgs2)))
+        i1 = imgs1.view(-1)
+        i2 = imgs2.view(-1)
+        loss_cosine_i = i1.dot(i2)/(torch.sqrt(i1.dot(i1))*torch.sqrt(i2.dot(i2)))
         #loss_cosine_w = w1.dot(w2)/(torch.sqrt(w1.dot(w1))*torch.sqrt(w2.dot(w2)))
 
 #loss4
