@@ -183,10 +183,10 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
             torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
             with open(resultPath+'/Loss.txt', 'a+') as f:
-                        print('i_'+str(epoch),file=f)
+                        print('i_'+str(i),file=f)
                         print('---------ImageSpace--------',file=f)
-                        print('loss_mask_mse:'+str(loss_mask_mse.item())+'--loss_mask_ssim:'+str(loss_mask_ssim.item())+'--loss_mask_lpips:'+str(loss_mask_lpips.item()),file=f)
-                        print('loss_grad_mse:'+str(loss_grad_mse.item())+'--loss_grad_ssim:'+str(loss_grad_ssim.item())+'--loss_grad_lpips:'+str(loss_grad_lpips.item()),file=f)
+                        print('loss_small_mse:'+str(loss_small_mse.item())+'--loss_small_ssim:'+str(loss_small_ssim.item())+'--loss_small_lpips:'+str(loss_small_lpips.item()),file=f)
+                        print('loss_medium_mse:'+str(loss_medium_mse.item())+'--loss_medium_ssim:'+str(loss_medium_ssim.item())+'--loss_medium_lpips:'+str(loss_medium_lpips.item()),file=f)
                         print('loss_img_mse:'+str(loss_img_mse.item())+'--loss_img_ssim:'+str(loss_img_ssim.item())+'--loss_img_lpips:'+str(loss_img_lpips.item()),file=f)
                         print('---------LatentSpace--------',file=f)
                         print('loss_w:'+str(loss_w.item())+'--loss_w_m:'+str(loss_w_m.item())+'--loss_w_s:'+str(loss_w_s.item()),file=f)
