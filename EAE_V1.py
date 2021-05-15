@@ -85,7 +85,7 @@ def train(avg_tensor = None, coefs=0):
         ssim_value = pytorch_ssim.ssim(imgs_medium_1, imgs_medium_2) # while ssim_value<0.999:
         loss_medium_ssim = 1-ssim_loss(imgs_medium_1, imgs_medium_2)
 
-        loss_2 = 3*loss_medium_mse + loss_medium_center + loss_medium_ssim
+        loss_2 = 3*loss_medium_mse + loss_medium_lpips + loss_medium_ssim
         E_optimizer.zero_grad()
         loss_2.backward(retain_graph=True)
         E_optimizer.step()
@@ -142,7 +142,7 @@ def train(avg_tensor = None, coefs=0):
 
         print('i_'+str(epoch))
         print('---------ImageSpace--------')
-        print('loss_small_mse_:'+str(loss_small_mse_.item())+'--loss_small_ssim:'+str(loss_small_ssim.item())+'--loss_small_lpips:'+str(loss_small_lpips.item()))
+        print('loss_small_mse_:'+str(loss_small_mse.item())+'--loss_small_ssim:'+str(loss_small_ssim.item())+'--loss_small_lpips:'+str(loss_small_lpips.item()))
         print('loss_medium_mse_:'+str(loss_medium_mse_.item())+'--loss_medium_ssim:'+str(loss_medium_ssim.item())+'--loss_medium_lpips:'+str(loss_medium_lpips.item()))
         print('loss_img_mse:'+str(loss_img_mse.item())+'--loss_img_ssim:'+str(loss_img_ssim.item())+'--loss_img_lpips:'+str(loss_img_lpips.item()))
         print('---------LatentSpace--------')
