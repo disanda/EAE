@@ -71,7 +71,7 @@ def train(avg_tensor = None, coefs=0):
         loss_small_ssim = 1-ssim_loss(imgs_small_1, imgs_small_2)
 
 
-        loss_1 = 5*loss_small_mse_ + 3*loss_small_lpips + loss_small_ssim
+        loss_1 = 5*loss_small_mse + 3*loss_small_lpips + loss_small_ssim
         E_optimizer.zero_grad()
         loss_1.backward(retain_graph=True)
         E_optimizer.step()
