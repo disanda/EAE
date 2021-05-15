@@ -23,22 +23,20 @@ def set_seed(seed): #随机数设置
     torch.cuda.manual_seed_all(seed)  # gpu
     torch.backends.cudnn.deterministic = True
 
-def train(avg_tensor = None, coefs=0):
+def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
     Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
     Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
     const_ = Gs.const
 
-    E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
-
-    writer = tensorboardX.SummaryWriter(os.path.join(output_dir, 'summaries'))
+    writer = tensor_writer
 
     loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
@@ -234,7 +232,11 @@ if __name__ == "__main__":
     ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
     coefs_ = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1] 
 
-    train(avg_tensor=center_tensor,coefs=coefs_)
+    writer_path = os.path.join(resultPath, './summaries')
+    if not os.path.exists(writer_path): os.mkdir(writer_path)
+    writer = tensorboardX.SummaryWriter(writer_path)
+
+    train(avg_tensor=center_tensor, coefs=coefs_, tensor_writer=writer)
 
 
 
