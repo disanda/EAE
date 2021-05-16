@@ -102,14 +102,14 @@ class GradCAM(object):
         cam = np.maximum(cam, 0)  # ReLU
 
         # resize to 224*224
-        cam_all=np.random.randn(inputs.size(0),inputs.size(2),inputs.size(3))
+        cam_all=np.random.randn(inputs.size(0),inputs.size(2),inputs.size(3)) #[n,h,w]
         #print(cam_all.shape)
         for i,j in enumerate(cam):
             # j:[c,h,w] ,数值归一化
             j -= np.min(j)
             j /= np.max(j)
             cam_all[i] = cv2.resize(j, (inputs.size(3),inputs.size(2))) # cv2的resize宽高顺序相反，是W,H
-        cam_all = cam_all[inputs.size(0),1,inputs.size(2),inputs.size(3)] #[n,1,h,w]
+        cam_all = cam_all.reshape(inputs.size(0),1,inputs.size(2),inputs.size(3))
         ts = torch.tensor(cam_all)
         return ts 
 
@@ -188,7 +188,7 @@ class GradCamPlusPlus(GradCAM):
             cam /= np.max(cam)
             # resize to 224*224
             cam_all[i] = cv2.resize(cam, (inputs.size(3),inputs.size(2)))
-        cam_all = cam_all[inputs.size(0),1,inputs.size(2),inputs.size(3)]
+        cam_all = cam_all.reshape(inputs.size(0),1,inputs.size(2),inputs.size(3))
         ts = torch.tensor(cam_all)
         return ts
 

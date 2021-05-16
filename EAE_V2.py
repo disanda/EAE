@@ -46,7 +46,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     batch_size = 5
     const1 = const_.repeat(batch_size,1,1,1)
 
-    vgg16 = torchvision.models.vgg16(pretrained=True)
+    vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
     final_layer = None
     for name, m in vgg16.named_modules():
         if isinstance(m, nn.Conv2d):
