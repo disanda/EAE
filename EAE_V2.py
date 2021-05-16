@@ -75,7 +75,34 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         imgs1.retain_grad()
         imgs2.retain_grad()
         grad1 = gbp(imgs1) # [n,c,h,w]
-        grad1 = gbp(imgs2)
+        grad2 = gbp(imgs2)
+
+        for i,j in enumerate(mask_1[:,0]):
+            heatmap = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
+            heatmap = np.float32(heatmap) / 255
+            heatmap = heatmap[..., ::-1]  # gbr to rgb
+            flag = imgs[i]
+            flag = flag.permute(1,2,0)
+            cam = heatmap + np.float32(flag.detach().numpy())
+            cam -= np.max(np.min(cam.copy()), 0)
+            cam /= np.max(cam)
+            io.imsave('./img1-cam-{}.jpg'.format(epoch), np.uint8(cam*255.))
+            io.imsave('./img1-heatmap-{}.jpg'.format(epoch), (heatmap * 255.).astype(np.uint8))
+            io.imsave('./img1-{}.jpg'.format(epoch), np.uint8(flag.detach().numpy()*255.))
+
+        for i,j in enumerate(mask_2[:,0]):
+            heatmap = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
+            heatmap = np.float32(heatmap) / 255
+            heatmap = heatmap[..., ::-1]  # gbr to rgb
+            flag = imgs[i]
+            flag = flag.permute(1,2,0)
+            cam = heatmap + np.float32(flag.detach().numpy())
+            cam -= np.max(np.min(cam.copy()), 0)
+            cam /= np.max(cam)
+            io.imsave('./img1-cam-{}.jpg'.format(epoch), np.uint8(cam*255.))
+            io.imsave('./img1-heatmap-{}.jpg'.format(epoch), (heatmap * 255.).astype(np.uint8))
+            io.imsave('./img1-{}.jpg'.format(epoch), np.uint8(flag.detach().numpy()*255.))
+
 #Mask_Cam
         loss_mask_mse = loss_mse(mask_1,mask_2)
         E_optimizer.zero_grad()

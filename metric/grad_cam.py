@@ -92,7 +92,7 @@ class GradCAM(object):
         index_max=np.argmax(np.bincount(index))
         target = output[:,index_max] # [N]
         target = target.mean()
-        target.backward()
+        target.backward(retain_graph=True)
 
         gradient = self.gradient.cpu().data.numpy()  # [N,C,H,W]
         weight = np.mean(gradient, axis=(2, 3))  # [N,C]
@@ -109,8 +109,9 @@ class GradCAM(object):
             j -= np.min(j)
             j /= np.max(j)
             cam_all[i] = cv2.resize(j, (inputs.size(3),inputs.size(2))) # cv2的resize宽高顺序相反，是W,H
-        #print(cam_all.shape)
-        return cam_all
+        cam_all = cam_all[inputs.size(0),1,inputs.size(2),inputs.size(3)] #[n,1,h,w]
+        ts = torch.tensor(cam_all)
+        return ts 
 
 
 class GradCamPlusPlus(GradCAM):
@@ -166,8 +167,8 @@ class GradCamPlusPlus(GradCAM):
         index_max=np.argmax(np.bincount(index))
         target = output[:,index_max] # [N]
         target = target.mean()
-        target.backward()
-        cam_all=np.random.randn(inputs.size(0),inputs.size(2),inputs.size(3))
+        target.backward(retain_graph=True)
+        cam_all=np.random.randn(inputs.size(0),inputs.size(2),inputs.size(3)) #[n,w,h]
         for i,j in enumerate(index):
             gradient = self.gradient[i].cpu().data.numpy() # 第i个:[C,H,W]
             gradient = np.maximum(gradient, 0.)  # ReLU
@@ -187,7 +188,9 @@ class GradCamPlusPlus(GradCAM):
             cam /= np.max(cam)
             # resize to 224*224
             cam_all[i] = cv2.resize(cam, (inputs.size(3),inputs.size(2)))
-        return cam_all
+        cam_all = cam_all[inputs.size(0),1,inputs.size(2),inputs.size(3)]
+        ts = torch.tensor(cam_all)
+        return ts
 
 class GuidedBackPropagation(object):
 
@@ -224,7 +227,7 @@ class GuidedBackPropagation(object):
         index_max=np.argmax(np.bincount(index))
         target = output[:,index_max]
         target = target.mean()
-        target.backward()
+        target.backward(retain_graph=True)
         return inputs.grad  # [N,3,H,W]
 
 
