@@ -70,8 +70,8 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.zero_grad()
 
 #Image Space
-        mask_1 = grad_cam_plus_plus(imgs1) #[c,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2)
+        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,h,w]
+        mask_2 = grad_cam_plus_plus(imgs2,None)
         imgs1.retain_grad()
         imgs2.retain_grad()
         grad1 = gbp(imgs1) # [n,c,h,w]
