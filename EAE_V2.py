@@ -45,7 +45,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     loss_kl = torch.nn.KLDivLoss()
     ssim_loss = pytorch_ssim.SSIM()
 
-    batch_size = 5
+    batch_size = 4
     const1 = const_.repeat(batch_size,1,1,1)
 
     vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
@@ -224,9 +224,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             grads = grad.data.numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)
-            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'./heatmap_%d.png'%(epoch))
-            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'./cam_%d.png'%(epoch))
-            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'./gb_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(epoch))
             with open(resultPath+'/Loss.txt', 'a+') as f:
                         print('i_'+str(epoch),file=f)
                         print('---------ImageSpace--------',file=f)
