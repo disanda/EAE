@@ -35,9 +35,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     #Gm.cuda()
     E.cuda()
     const_ = Gs.const
+    writer = tensor_writer
 
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
-
     loss_all=0
     loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')

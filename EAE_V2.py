@@ -35,9 +35,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     #Gm.cuda()
     E.cuda()
     const_ = Gs.const
-
     writer = tensor_writer
 
+    E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
     loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
     loss_kl = torch.nn.KLDivLoss()
@@ -46,7 +46,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     batch_size = 5
     const1 = const_.repeat(batch_size,1,1,1)
 
-    vgg16 = torchvision.model.vgg16(pretrained=True)
+    vgg16 = torchvision.models.vgg16(pretrained=True)
     final_layer = None
     for name, m in vgg16.named_modules():
         if isinstance(m, nn.Conv2d):
@@ -217,6 +217,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
+
+    if not os.path.exists('./result'): os.mkdir('./result')
+
     resultPath = "./result/D2E_CAT_v2)"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 

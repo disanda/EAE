@@ -1,17 +1,4 @@
-# Copyright 2019 Stanislav Pidhorskyi
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+#Conv类中定义了lr_equalization_coef属性，该属性为True, 则会进行特殊的初始化，且在optimizer中更新
 
 import torch
 from torch import nn
@@ -108,7 +95,7 @@ class Conv2d(nn.Module):
         self.gain = gain
         self.lrmul = lrmul
         self.transpose = transpose
-        self.fan_in = np.prod(self.kernel_size) * in_channels // groups
+        self.fan_in = np.prod(self.kernel_size) * in_channels // groups # k*k*c
         self.transform_kernel = transform_kernel
         if transpose:
             self.weight = Parameter(torch.Tensor(in_channels, out_channels // groups, *self.kernel_size))
@@ -123,7 +110,7 @@ class Conv2d(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        self.std = self.gain / np.sqrt(self.fan_in)
+        self.std = self.gain / np.sqrt(self.fan_in) #这里重置了std
         if not self.implicit_lreq:
             init.normal_(self.weight, mean=0, std=1.0 / self.lrmul)
         else:
@@ -206,3 +193,17 @@ class SeparableConvTranspose2d(Conv2d):
         super(SeparableConvTranspose2d, self).__init__(in_channels, out_channels, kernel_size, stride, padding,
                                               output_padding, dilation, bias, gain, True)
 
+# Copyright 2019 Stanislav Pidhorskyi
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
