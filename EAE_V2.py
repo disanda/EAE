@@ -221,7 +221,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             heatmap=torch.cat((heatmap1,heatmap1))
             cam=torch.cat((cam1,cam2))
             grads = torch.cat((grad1,grad2))
-            grads = grad.data.numpy() # [n,c,h,w]
+            grads = grads.data.numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)
             torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch))
