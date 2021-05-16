@@ -44,7 +44,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     loss_kl = torch.nn.KLDivLoss()
     ssim_loss = pytorch_ssim.SSIM()
 
-    batch_size = 5
+    batch_size = 3
     const1 = const_.repeat(batch_size,1,1,1)
     it_d = 0
     for epoch in range(0,250001):
@@ -119,7 +119,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         w1_cos = w1.view(-1)
         w2_cos = w2.view(-1)
-        loss_cosine_w = w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w2_cos.dot(w2_cos)))
+        loss_cosine_w = 1 - w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w2_cos.dot(w2_cos)))
 
         loss_c = loss_mse(const1,const1) #没有这个const，梯度起初没法快速下降，很可能无法收敛, 这个惩罚即乘0.1后,效果大幅提升！
         loss_c_m = loss_mse(const1.mean(),const2.mean())
@@ -132,7 +132,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         c1_cos = const1.view(-1)
         c2_cos = const2.view(-1)
-        loss_cosine_c = c1_cos.dot(c2_cos)/(torch.sqrt(c1_cos.dot(c1_cos))*torch.sqrt(c2_cos.dot(c2_cos)))
+        loss_cosine_c = 1 - c1_cos.dot(c2_cos)/(torch.sqrt(c1_cos.dot(c1_cos))*torch.sqrt(c2_cos.dot(c2_cos)))
         #loss_cosine_w = torch.cosine_similarity(c1_cos, c2_cos).mean() #这个可以算2个维度[n,info]
 
         loss_ls_all = loss_w+loss_w_m+loss_w_s+loss_kl_w+loss_cosine_w+\

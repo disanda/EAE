@@ -32,7 +32,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -45,7 +45,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     loss_kl = torch.nn.KLDivLoss()
     ssim_loss = pytorch_ssim.SSIM()
 
-    batch_size = 4
+    batch_size = 3
     const1 = const_.repeat(batch_size,1,1,1)
 
     vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
@@ -154,7 +154,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         w1_cos = w1.view(-1)
         w2_cos = w2.view(-1)
-        loss_cosine_w = w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w1_cos.dot(w1_cos)))
+        loss_cosine_w = 1 - w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w1_cos.dot(w1_cos))) #[-1,1],-1:反向相反，1:方向相同
 # C
         loss_c = loss_mse(const1,const2) #没有这个const，梯度起初没法快速下降，很可能无法收敛, 这个惩罚即乘0.1后,效果大幅提升！
         loss_c_m = loss_mse(const1.mean(),const2.mean())
@@ -167,7 +167,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         c_cos1 = const1.view(-1)
         c_cos2 = const2.view(-1)
-        loss_cosine_c = c_cos1.dot(c_cos2)/(torch.sqrt(c_cos1.dot(c_cos1))*torch.sqrt(c_cos2.dot(c_cos2)))
+        loss_cosine_c = 1 - c_cos1.dot(c_cos2)/(torch.sqrt(c_cos1.dot(c_cos1))*torch.sqrt(c_cos2.dot(c_cos2))) 
 
 
         loss_ls_all = loss_w+loss_w_m+loss_w_s+loss_kl_w+loss_cosine_w+\
@@ -221,7 +221,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             heatmap=torch.cat((heatmap1,heatmap1))
             cam=torch.cat((cam1,cam2))
             grads = torch.cat((grad1,grad2))
-            grads = grads.data.numpy() # [n,c,h,w]
+            grads = grads.data.cpu().numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)
             torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch))
