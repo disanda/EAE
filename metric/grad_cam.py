@@ -231,14 +231,18 @@ class GuidedBackPropagation(object):
         return inputs.grad  # [N,3,H,W]
 
 def mask2cam(mask,imgs): #mask: [n,1,h,w], imgs:[n,3,h,w] 
-    heatmap = mask.detach().clone()
-    cam = mask.detach().clone()
+    imgs = imgs.detach().clone().cpu()
+    mask = mask.detach().clone().cpu()
+    heatmap = np.float32(imgs).copy() #[n,c,h,w]
+    heatmap_cv2 = np.transpose(heatmap,(0,2,3,1)) # [n,c,h,w] -> [n,h,w,c]
+    cam = np.float32(imgs).copy()
     for i,j in enumerate(mask[:,0]):
-        heatmap[i,0] = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
-        heatmap[i,0] = np.float32(heatmap) / 255
-        heatmap[i,0] = heatmap[..., ::-1]  # gbr to rgb
+        heatmap_cv2[i] = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET) #[H,W,C]
+        heatmap_cv2[i] = np.float32(heatmap) / 255
+        heatmap_cv2[i] = heatmap[..., ::-1]  # gbr to rgb
+        heatmap[i] = np.transpose(heatmap_cv2[i],(2,0,1)) #[H,W,C] -> [C,H,W]
         flag = imgs1[i].detach().cpu()
-        flag = flag.permute(1,2,0)
+        #flag = flag.permute(1,2,0) #[C,H,W] -> [H,W,C]
         cam[i] = heatmap + np.float32(flag.numpy())
         cam[i] -= np.max(np.min(cam.copy()), 0)
         cam[i] /= np.max(cam[i])

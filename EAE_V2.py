@@ -76,17 +76,17 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         mask_2 = grad_cam_plus_plus(imgs2,None)
         #imgs1.retain_grad()
         #imgs2.retain_grad()
-        imgs1_ = imgs1.detach.clone()
+        imgs1_ = imgs1.detach().clone()
         imgs1_.requires_grad = True
-        imgs2_ = imgs2.detach.clone()
+        imgs2_ = imgs2.detach().clone()
         imgs2_.requires_grad = True
         grad1 = gbp(imgs1_) # [n,c,h,w]
         grad2 = gbp(imgs2_)
 
 #Mask_Cam
-        mask_1 = mask.cuda().float()
+        mask_1 = mask_1.cuda().float()
         mask_1.requires_grad=True
-        mask_2 = mask.cuda().float()
+        mask_2 = mask_2.cuda().float()
         mask_2.requires_grad=True
         loss_mask_mse = loss_mse(mask_1,mask_2)
         E_optimizer.zero_grad()
@@ -104,9 +104,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         loss_mask_lpips.backward(retain_graph=True)
         E_optimizer.step()
 #Grad
-        grad1 = mask.cuda().float()
+        grad1 = grad1.cuda().float()
         grad1.requires_grad=True
-        grad2 = mask.cuda().float()
+        grad2 = grad2.cuda().float()
         grad2.requires_grad=True
         loss_grad_mse = loss_mse(grad1,grad2)
         E_optimizer.zero_grad()
@@ -216,8 +216,8 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
             torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(epoch),nrow=n_row) # nrow=3
-            heatmap1,cam1 = mask2cam(mask_1)
-            heatmap2,cam2 = mask2cam(mask_2)
+            heatmap1,cam1 = mask2cam(mask_1,imgs1)
+            heatmap2,cam2 = mask2cam(mask_2,imgs2)
             heatmap=torch.cat((heatmap1,heatmap1))
             cam=torch.cat((cam1,cam2))
             grads = torch.cat((grad1,grad2))
