@@ -220,10 +220,13 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             heatmap2,cam2 = mask2cam(mask_2)
             heatmap=torch.cat((heatmap1,heatmap1))
             cam=torch.cat((cam1,cam2))
-            grad = torch.cat((grad1,grad2))
+            grads = torch.cat((grad1,grad2))
+            grads = grad.data.numpy() # [n,c,h,w]
+            grads -= np.max(np.min(grads), 0)
+            grads /= np.max(grads)
             torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'./heatmap_%d.png'%(epoch))
             torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'./cam_%d.png'%(epoch))
-            torchvision.utils.save_image(torch.tensor(grad1),resultPath_grad_cam+'./gb_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'./gb_%d.png'%(epoch))
             with open(resultPath+'/Loss.txt', 'a+') as f:
                         print('i_'+str(epoch),file=f)
                         print('---------ImageSpace--------',file=f)
