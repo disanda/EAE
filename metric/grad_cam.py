@@ -74,7 +74,7 @@ class GradCAM(object):
             # 数值归一化
             cam -= np.min(cam)
             cam /= np.max(cam)
-            cam_all[i] = cv2.resize(cam, (inputs.size(3),inputs.size(2)))
+            cam_all[i] = cv2.resize(cam, (inputs.size(3),inputs.size(2))) # [C,W,H] -> [C,H,W]
         return cam_all
 
     # 只计算一次梯度
@@ -237,13 +237,14 @@ def mask2cam(mask,imgs): #mask: [n,1,h,w], imgs:[n,3,h,w]
     heatmap_cv2 = np.transpose(heatmap,(0,2,3,1)) # [n,c,h,w] -> [n,h,w,c]
     cam = np.float32(imgs).copy()
     for i,j in enumerate(mask[:,0]):
-        heatmap_cv2[i] = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET) #[H,W,C]
-        heatmap_cv2[i] = np.float32(heatmap) / 255
-        heatmap_cv2[i] = heatmap[..., ::-1]  # gbr to rgb
-        heatmap[i] = np.transpose(heatmap_cv2[i],(2,0,1)) #[H,W,C] -> [C,H,W]
-        flag = imgs1[i].detach().cpu()
+        heatmap_i = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET) #[H,W,1]
+        heatmap_i = np.float32(heatmap_i) / 255
+        heatmap_i= heatmap_i[..., ::-1]  # gbr to rgb
+        heatmap_i = np.transpose(heatmap_i,(2,0,1)) #[H,W,1] -> [1,H,W]
+        heatmap[i] = heatmap_i
+        flag = imgs1[i].detach().cpu() #[C,H,W]
         #flag = flag.permute(1,2,0) #[C,H,W] -> [H,W,C]
-        cam[i] = heatmap + np.float32(flag.numpy())
+        cam[i] = heatmap_i + np.float32(flag.numpy())
         cam[i] -= np.max(np.min(cam.copy()), 0)
         cam[i] /= np.max(cam[i])
     return heatmap,cam
