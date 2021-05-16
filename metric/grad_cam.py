@@ -242,7 +242,7 @@ def mask2cam(mask,imgs): #mask: [n,1,h,w], imgs:[n,3,h,w]
         heatmap_i= heatmap_i[..., ::-1]  # gbr to rgb
         heatmap_i = np.transpose(heatmap_i,(2,0,1)) #[H,W,1] -> [1,H,W]
         heatmap[i] = heatmap_i
-        flag = imgs1[i].detach().cpu() #[C,H,W]
+        flag = imgs[i].detach().cpu() #[C,H,W]
         #flag = flag.permute(1,2,0) #[C,H,W] -> [H,W,C]
         cam[i] = heatmap_i + np.float32(flag.numpy())
         cam[i] -= np.max(np.min(cam.copy()), 0)
