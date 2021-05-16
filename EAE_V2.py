@@ -3,6 +3,8 @@
 #latent space: MSE -> Cosine Similarty -> Distribution Divergency
 #在训练时加入write比较
 import os
+from skimage import io
+import cv2
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
@@ -11,7 +13,7 @@ from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
 import metric.pytorch_ssim as pytorch_ssim
-from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation
+from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation, mask2cam
 import tensorboardX
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
@@ -30,7 +32,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -70,40 +72,22 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.zero_grad()
 
 #Image Space
-        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,h,w]
+        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
         mask_2 = grad_cam_plus_plus(imgs2,None)
-        imgs1.retain_grad()
-        imgs2.retain_grad()
-        grad1 = gbp(imgs1) # [n,c,h,w]
-        grad2 = gbp(imgs2)
-
-        for i,j in enumerate(mask_1[:,0]):
-            heatmap = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
-            heatmap = np.float32(heatmap) / 255
-            heatmap = heatmap[..., ::-1]  # gbr to rgb
-            flag = imgs[i]
-            flag = flag.permute(1,2,0)
-            cam = heatmap + np.float32(flag.detach().numpy())
-            cam -= np.max(np.min(cam.copy()), 0)
-            cam /= np.max(cam)
-            io.imsave('./img1-cam-{}.jpg'.format(epoch), np.uint8(cam*255.))
-            io.imsave('./img1-heatmap-{}.jpg'.format(epoch), (heatmap * 255.).astype(np.uint8))
-            io.imsave('./img1-{}.jpg'.format(epoch), np.uint8(flag.detach().numpy()*255.))
-
-        for i,j in enumerate(mask_2[:,0]):
-            heatmap = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
-            heatmap = np.float32(heatmap) / 255
-            heatmap = heatmap[..., ::-1]  # gbr to rgb
-            flag = imgs[i]
-            flag = flag.permute(1,2,0)
-            cam = heatmap + np.float32(flag.detach().numpy())
-            cam -= np.max(np.min(cam.copy()), 0)
-            cam /= np.max(cam)
-            io.imsave('./img1-cam-{}.jpg'.format(epoch), np.uint8(cam*255.))
-            io.imsave('./img1-heatmap-{}.jpg'.format(epoch), (heatmap * 255.).astype(np.uint8))
-            io.imsave('./img1-{}.jpg'.format(epoch), np.uint8(flag.detach().numpy()*255.))
+        #imgs1.retain_grad()
+        #imgs2.retain_grad()
+        imgs1_ = imgs1.detach.clone()
+        imgs1_.requires_grad = True
+        imgs2_ = imgs2.detach.clone()
+        imgs2_.requires_grad = True
+        grad1 = gbp(imgs1_) # [n,c,h,w]
+        grad2 = gbp(imgs2_)
 
 #Mask_Cam
+        mask_1 = mask.cuda().float()
+        mask_1.requires_grad=True
+        mask_2 = mask.cuda().float()
+        mask_2.requires_grad=True
         loss_mask_mse = loss_mse(mask_1,mask_2)
         E_optimizer.zero_grad()
         loss_mask_mse.backward(retain_graph=True)
@@ -120,6 +104,10 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         loss_mask_lpips.backward(retain_graph=True)
         E_optimizer.step()
 #Grad
+        grad1 = mask.cuda().float()
+        grad1.requires_grad=True
+        grad2 = mask.cuda().float()
+        grad2.requires_grad=True
         loss_grad_mse = loss_mse(grad1,grad2)
         E_optimizer.zero_grad()
         loss_grad_mse.backward(retain_graph=True)
@@ -227,7 +215,15 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         if epoch % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(epoch),nrow=n_row) # nrow=3
+            heatmap1,cam1 = mask2cam(mask_1)
+            heatmap2,cam2 = mask2cam(mask_2)
+            heatmap=torch.cat((heatmap1,heatmap1))
+            cam=torch.cat((cam1,cam2))
+            grad = torch.cat((grad1,grad2))
+            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'./heatmap_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'./cam_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(grad1),resultPath_grad_cam+'./gb_%d.png'%(epoch))
             with open(resultPath+'/Loss.txt', 'a+') as f:
                         print('i_'+str(epoch),file=f)
                         print('---------ImageSpace--------',file=f)
@@ -255,6 +251,9 @@ if __name__ == "__main__":
 
     resultPath1_2 = resultPath+"/models"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
+
+    resultPath_grad_cam = resultPath+"/grad_cam"
+    if not os.path.exists(resultPath_grad_cam): os.mkdir(resultPath_grad_cam)
 
     center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
     layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 

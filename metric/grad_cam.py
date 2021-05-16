@@ -230,6 +230,20 @@ class GuidedBackPropagation(object):
         target.backward(retain_graph=True)
         return inputs.grad  # [N,3,H,W]
 
+def mask2cam(mask,imgs): #mask: [n,1,h,w], imgs:[n,3,h,w] 
+    heatmap = mask.detach().clone()
+    cam = mask.detach().clone()
+    for i,j in enumerate(mask[:,0]):
+        heatmap[i,0] = cv2.applyColorMap(np.uint8(255 * j), cv2.COLORMAP_JET)
+        heatmap[i,0] = np.float32(heatmap) / 255
+        heatmap[i,0] = heatmap[..., ::-1]  # gbr to rgb
+        flag = imgs1[i].detach().cpu()
+        flag = flag.permute(1,2,0)
+        cam[i] = heatmap + np.float32(flag.numpy())
+        cam[i] -= np.max(np.min(cam.copy()), 0)
+        cam[i] /= np.max(cam[i])
+    return heatmap,cam
+
 
 
 #---------test-----------
