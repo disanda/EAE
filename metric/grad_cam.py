@@ -247,7 +247,7 @@ def mask2cam(mask,imgs): #mask: [n,1,h,w], imgs:[n,3,h,w]
         cam[i] = heatmap_i + np.float32(flag.numpy())
         cam[i] -= np.max(np.min(cam.copy()), 0)
         cam[i] /= np.max(cam[i])
-    return heatmap,cam
+    return torch.tensor(heatmap),torch.tensor(cam)
 
 
 
