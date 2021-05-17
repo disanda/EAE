@@ -26,14 +26,15 @@ def set_seed(seed): #随机数设置
     torch.cuda.manual_seed_all(seed)  # gpu
     torch.backends.cudnn.deterministic = True
 
-def space_loss(imgs1,imgs2,image_space=True):
+def space_loss(imgs1,imgs2,image_space=True,lpips=None):
+    loss_mse = torch.nn.MSELoss()
+    loss_kl = torch.nn.KLDivLoss()
+    ssim_loss = pytorch_ssim.SSIM()
+
     loss_imgs_mse_1 = loss_mse(imgs1,imgs2)
     loss_imgs_mse_2 = loss_mse(imgs1.mean(),imgs2.mean())
     loss_imgs_mse_3 = loss_mse(imgs1.std(),imgs2.std())
     loss_imgs_mse = loss_imgs_mse_1 + loss_imgs_mse_2 + loss_imgs_mse_3
-
-    ssim_value = pytorch_ssim.ssim(imgs1, imgs2) # while ssim_value<0.999:
-    loss_imgs_ssim = 1-ssim_loss(imgs1, imgs2)
 
     imgs1_kl, imgs2_kl = torch.nn.functional.softmax(imgs1),torch.nn.functional.softmax(imgs2)
     loss_kl_imgs = loss_kl(torch.log(imgs2_kl),imgs1_kl) #D_kl(True=y1_imgs||Fake=y2_imgs)
@@ -44,13 +45,19 @@ def space_loss(imgs1,imgs2,image_space=True):
     imgs2_cos = imgs2.view(-1)
     loss_imgs_cosine = 1 - imgs1_cos.dot(imgs2_cos)/(torch.sqrt(imgs1_cos.dot(imgs1_cos))*torch.sqrt(imgs2_cos.dot(imgs2_cos))) #[-1,1],-1:反向相反，1:方向相同
 
-    if Image_Space:
+    if  image_space:
+        ssim_value = pytorch_ssim.ssim(imgs1, imgs2) # while ssim_value<0.999:
+        loss_imgs_ssim = 1-ssim_loss(imgs1, imgs2)
+    else:
+        loss_imgs_ssim = torch.tensor(0)
+
+    if image_space:
         loss_imgs_lpips = loss_lpips(imgs1,imgs2).mean()
     else:
         loss_imgs_lpips = torch.tensor(0)
 
     loss_imgs = loss_imgs_mse + loss_imgs_ssim + loss_imgs_cosine + loss_kl_imgs + loss_imgs_lpips
-    loss_info = [[loss_imgs_mse_1,loss_imgs_mse_2,loss_imgs_mse_3]], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]
+    loss_info = [[loss_imgs_mse_1,loss_imgs_mse_2,loss_imgs_mse_3], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]
     return loss_imgs, loss_info
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
@@ -68,10 +75,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     writer = tensor_writer
 
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
-    loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
-    loss_kl = torch.nn.KLDivLoss()
-    ssim_loss = pytorch_ssim.SSIM()
 
     batch_size = 3
     const1 = const_.repeat(batch_size,1,1,1)
@@ -108,15 +112,15 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         imgs1_.requires_grad = True
         imgs2_ = imgs2.detach().clone()
         imgs2_.requires_grad = True
-        grad1 = gbp(imgs1_) # [n,c,h,w]
-        grad2 = gbp(imgs2_)
+        grad_1 = gbp(imgs1_) # [n,c,h,w]
+        grad_2 = gbp(imgs2_)
 
     ##--Mask_Cam
         mask_1 = mask_1.cuda().float()
         mask_1.requires_grad=True
         mask_2 = mask_2.cuda().float()
         mask_2.requires_grad=True
-        loss_mask, loss_mask_info = space_loss(mask_1,mask_2)
+        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips=loss_lpips)
 
         E_optimizer.zero_grad()
         loss_mask.backward(retain_graph=True)
@@ -127,14 +131,14 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         grad_1.requires_grad=True
         grad_2 = grad_2.cuda().float()
         grad_2.requires_grad=True
-        loss_grad, loss_grad_info = space_loss(grad_1,grad_2)
+        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips=loss_lpips)
 
         E_optimizer.zero_grad()
         loss_grad.backward(retain_graph=True)
         E_optimizer.step()
 
     ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2)
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips=loss_lpips)
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
@@ -169,7 +173,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_mask_ssim', loss_mask_info[1], global_step=it_d)
         writer.add_scalar('loss_mask_cosine', loss_mask_info[2], global_step=it_d)
         writer.add_scalar('loss_mask_kl', loss_mask_info[3], global_step=it_d)
-        writer.add_scalar('loss_mask_lpips', loss_mask_lpips[4], global_step=it_d)
+        writer.add_scalar('loss_mask_lpips', loss_mask_info[4], global_step=it_d)
 
         writer.add_scalar('loss_grad_mse', loss_grad_info[0][0], global_step=it_d)
         writer.add_scalar('loss_grad_mse_mean', loss_grad_info[0][1], global_step=it_d)
@@ -177,7 +181,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_grad_ssim', loss_grad_info[1], global_step=it_d)
         writer.add_scalar('loss_grad_cosine', loss_grad_info[2], global_step=it_d)
         writer.add_scalar('loss_grad_kl', loss_grad_info[3], global_step=it_d)
-        writer.add_scalar('loss_grad_lpips', loss_grad_lpips[4], global_step=it_d)
+        writer.add_scalar('loss_grad_lpips', loss_grad_info[4], global_step=it_d)
 
         writer.add_scalar('loss_imgs_mse', loss_imgs_info[0][0], global_step=it_d)
         writer.add_scalar('loss_imgs_mse_mean', loss_imgs_info[0][1], global_step=it_d)
@@ -186,12 +190,6 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_imgs_cosine', loss_imgs_info[2], global_step=it_d)
         writer.add_scalar('loss_imgs_kl', loss_imgs_info[3], global_step=it_d)
         writer.add_scalar('loss_imgs_lpips', loss_imgs_info[4], global_step=it_d)
-
-        writer.add_scalar('loss_w', loss_w, global_step=it_d)
-        writer.add_scalar('loss_w_m', loss_w_m, global_step=it_d)
-        writer.add_scalar('loss_w_s', loss_w_s, global_step=it_d)
-        writer.add_scalar('loss_kl_w',  loss_kl_w, global_step=it_d)
-        writer.add_scalar('loss_cosine_w', loss_cosine_w, global_step=it_d)
 
         writer.add_scalar('loss_w_mse', loss_w_info[0][0], global_step=it_d)
         writer.add_scalar('loss_w_mse_mean', loss_w_info[0][1], global_step=it_d)
@@ -225,7 +223,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             heatmap2,cam2 = mask2cam(mask_2,imgs2)
             heatmap=torch.cat((heatmap1,heatmap1))
             cam=torch.cat((cam1,cam2))
-            grads = torch.cat((grad1,grad2))
+            grads = torch.cat((grad_1,grad_2))
             grads = grads.data.cpu().numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)

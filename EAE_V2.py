@@ -25,9 +25,6 @@ def set_seed(seed): #随机数设置
     torch.cuda.manual_seed_all(seed)  # gpu
     torch.backends.cudnn.deterministic = True
 
-def 
-
-
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
     Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
