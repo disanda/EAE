@@ -25,6 +25,9 @@ def set_seed(seed): #随机数设置
     torch.cuda.manual_seed_all(seed)  # gpu
     torch.backends.cudnn.deterministic = True
 
+def 
+
+
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
     Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
@@ -88,21 +91,30 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         mask_1.requires_grad=True
         mask_2 = mask_2.cuda().float()
         mask_2.requires_grad=True
-        loss_mask_mse = loss_mse(mask_1,mask_2)
-        E_optimizer.zero_grad()
-        loss_mask_mse.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_mask_mse_1 = loss_mse(mask_1,mask_2)
+        loss_mask_mse_2 = loss_mse(mask_1.mean(),mask_2.mean())
+        loss_mask_mse_3 = loss_mse(mask_1.std(),mask_2.std())
+        loss_mask_mse = loss_mask_mse_1 + loss_mask_mse_2 + loss_mask_mse_3
 
         ssim_value = pytorch_ssim.ssim(mask_1, mask_2) # while ssim_value<0.999:
         loss_mask_ssim = 1-ssim_loss(mask_1, mask_2)
-        E_optimizer.zero_grad()
-        loss_mask_ssim.backward(retain_graph=True)
-        E_optimizer.step()
 
         loss_mask_lpips = loss_lpips(mask_1,mask_2).mean()
+
+        mask1_kl, mask2_kl = torch.nn.functional.softmax(mask_1),torch.nn.functional.softmax(mask_2)
+        loss_kl_mask = loss_kl(torch.log(mask2_kl),mask1_kl) #D_kl(True=y1_imgs||Fake=y2_imgs)
+        loss_kl_mask = torch.where(torch.isnan(loss_kl_w),torch.full_like(loss_kl_w,0), loss_kl_w)
+        loss_kl_mask = torch.where(torch.isinf(loss_kl_w),torch.full_like(loss_kl_w,1), loss_kl_w)
+
+        mask1_cos = mask1.view(-1)
+        mask2_cos = mask2.view(-1)
+        loss_cosine_w = 1 - mask1_cos.dot(mask2_cos)/(torch.sqrt(mask1_cos.dot(mask1_cos))*torch.sqrt(mask2_cos.dot(mask2_cos))) #[-1,1],-1:反向相反，1:方向相同
+
+        loss_mask = loss_mask_mse + loss_mask_ssim + loss_mask_lpips + loss_kl_mask + loss_cosine_w
         E_optimizer.zero_grad()
-        loss_mask_lpips.backward(retain_graph=True)
+        loss_mask.backward(retain_graph=True)
         E_optimizer.step()
+
 #Grad
         grad1 = grad1.cuda().float()
         grad1.requires_grad=True
@@ -123,6 +135,37 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.zero_grad()
         loss_grad_lpips.backward(retain_graph=True)
         E_optimizer.step()
+
+        grad1 = grad1.cuda().float()
+        grad1.requires_grad=True
+        grad2 = grad2.cuda().float()
+        grad2.requires_grad=True
+        loss_grad_mse_1 = loss_mse(grad1,grad2)
+        loss_grad_mse_2 = loss_mse(grad1.mean(),grad2.mean())
+        loss_grad_mse_3 = loss_mse(mask_1.std(),mask_2.std())
+        loss_mask_mse = loss_mask_mse_1 + loss_mask_mse_2 + loss_mask_mse_3
+
+        ssim_value = pytorch_ssim.ssim(mask_1, mask_2) # while ssim_value<0.999:
+        loss_mask_ssim = 1-ssim_loss(mask_1, mask_2)
+
+        loss_mask_lpips = loss_lpips(mask_1,mask_2).mean()
+
+        mask1_kl, mask2_kl = torch.nn.functional.softmax(mask_1),torch.nn.functional.softmax(mask_2)
+        loss_kl_mask = loss_kl(torch.log(mask2_kl),mask1_kl) #D_kl(True=y1_imgs||Fake=y2_imgs)
+        loss_kl_mask = torch.where(torch.isnan(loss_kl_w),torch.full_like(loss_kl_w,0), loss_kl_w)
+        loss_kl_mask = torch.where(torch.isinf(loss_kl_w),torch.full_like(loss_kl_w,1), loss_kl_w)
+
+        mask1_cos = mask1.view(-1)
+        mask2_cos = mask2.view(-1)
+        loss_cosine_w = 1 - mask1_cos.dot(mask2_cos)/(torch.sqrt(mask1_cos.dot(mask1_cos))*torch.sqrt(mask2_cos.dot(mask2_cos))) #[-1,1],-1:反向相反，1:方向相同
+
+        loss_mask = loss_mask_mse + loss_mask_ssim + loss_mask_lpips + loss_kl_mask + loss_cosine_w
+        E_optimizer.zero_grad()
+        loss_mask.backward(retain_graph=True)
+        E_optimizer.step()
+
+
+
 #Image
         loss_img_mse = loss_mse(imgs1,imgs2)
         E_optimizer.zero_grad()
@@ -154,7 +197,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         w1_cos = w1.view(-1)
         w2_cos = w2.view(-1)
-        loss_cosine_w = 1 - w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w1_cos.dot(w1_cos))) #[-1,1],-1:反向相反，1:方向相同
+        loss_cosine_w = 1 - w1_cos.dot(w2_cos)/(torch.sqrt(w1_cos.dot(w1_cos))*torch.sqrt(w2_cos.dot(w2_cos))) #[-1,1],-1:反向相反，1:方向相同
 # C
         loss_c = loss_mse(const1,const2) #没有这个const，梯度起初没法快速下降，很可能无法收敛, 这个惩罚即乘0.1后,效果大幅提升！
         loss_c_m = loss_mse(const1.mean(),const2.mean())
