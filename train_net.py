@@ -1,3 +1,4 @@
+#常规stylwgan训练，需要加载对应配置参数文件args.config_file
 import os
 import sys
 import logging
