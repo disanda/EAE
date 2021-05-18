@@ -266,7 +266,7 @@ if __name__ == "__main__":
     if not os.path.exists(resultPath_grad_cam): os.mkdir(resultPath_grad_cam)
 
     #center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
-    center_tensor = torch.load('./pre-model/cars512/cars512-center_tensor.pt')
+    center_tensor = torch.load('./pre-model/cars/cars512-center_tensor.pt')
     layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
     layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
     ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
