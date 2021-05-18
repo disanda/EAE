@@ -62,16 +62,15 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     return loss_imgs, loss_info
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
-    Gs = Generator(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3) # cats: stratf 32->512 layer_count=8 / cat: startf 64->256 layer_count=7
-    #Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
-    Gs.load_state_dict(torch.load('./pre-model/cars/cars512_Gs_dict.pth'))
+    Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # cats: stratf 32->512 layer_count=8 / cat: startf 64->256 layer_count=7
+    Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
+
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-    #Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
-    Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth'))  
+    Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
+
     Gm.buffer1 = avg_tensor
-    E = BE.BE(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3)
-    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/pre-model/E_cat_v2_1_ep100000.pth'))
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cars_v2/E_model_ep90000.pth'))
+    E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_CAT_v2_1/models/E_model_ep10000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -81,7 +80,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
-    batch_size = 3
+    batch_size = 5
     const1 = const_.repeat(batch_size,1,1,1)
 
     vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
@@ -99,7 +98,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         latents = torch.randn(batch_size, 512) #[32, 512]
         with torch.no_grad(): #这里需要生成图片和变量
             w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
-            imgs1 = Gs.forward(w1,7) # 7->512 / 6->256
+            imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
 
         const2,w2 = E(imgs1.cuda())
 
@@ -211,14 +210,13 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_c_ssim', loss_c_info[3], global_step=it_d)
         writer.add_scalar('loss_c_lpips', loss_c_info[4], global_step=it_d)
 
-        writer.add_scalars('Image_Space_MSE', {'loss_mask_mse':loss_imgs_info[0][0],'loss_grad_mse':loss_grad_info[0][0],'loss_img_mse':loss_imgs_info[0][0]}, global_step=it_d)
-        writer.add_scalars('Image_Space_KL', {'loss_mask_kl':loss_mask_info[1],'loss_grad_cosine':loss_grad_info[1],'loss_imgs_cosine':loss_imgs_info[1]}, global_step=it_d)
+        writer.add_scalars('Image_Space_MSE', {'loss_mask_mse':loss_mask_info[0][0],'loss_grad_mse':loss_grad_info[0][0],'loss_img_mse':loss_imgs_info[0][0]}, global_step=it_d)
+        writer.add_scalars('Image_Space_KL', {'loss_mask_kl':loss_mask_info[1],'loss_grad_kl':loss_grad_info[1],'loss_imgs_kl':loss_imgs_info[1]}, global_step=it_d)
         writer.add_scalars('Image_Space_Cosine', {'loss_mask_cosine':loss_mask_info[2],'loss_grad_cosine':loss_grad_info[2],'loss_imgs_cosine':loss_imgs_info[2]}, global_step=it_d)
         writer.add_scalars('Image_Space_SSIM', {'loss_mask_ssim':loss_mask_info[3],'loss_grad_ssim':loss_grad_info[3],'loss_img_ssim':loss_imgs_info[3]}, global_step=it_d)
-        writer.add_scalars('Image_Space_Cosine', {'loss_mask_cosine':loss_mask_info[4],'loss_grad_cosine':loss_grad_info[4],'loss_imgs_cosine':loss_imgs_info[4]}, global_step=it_d)
         writer.add_scalars('Image_Space_Lpips', {'loss_mask_lpips':loss_mask_info[4],'loss_grad_lpips':loss_grad_info[4],'loss_img_lpips':loss_imgs_info[4]}, global_step=it_d)
         writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
-        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_w_info[0][1],'loss_c_mse_std':loss_w_info[0][2],'loss_c_kl':loss_w_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
+        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_w_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
 
         if epoch % 100 == 0:
             n_row = batch_size
@@ -253,7 +251,7 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
 
-    resultPath = "./result/D2E_Cars_v2"
+    resultPath = "./result/D2E_Cat_v2_1_1"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
@@ -265,8 +263,7 @@ if __name__ == "__main__":
     resultPath_grad_cam = resultPath+"/grad_cam"
     if not os.path.exists(resultPath_grad_cam): os.mkdir(resultPath_grad_cam)
 
-    #center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
-    center_tensor = torch.load('./pre-model/cars/cars512-center_tensor.pt')
+    center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
     layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
     layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
     ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
