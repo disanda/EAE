@@ -78,7 +78,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
-    batch_size = 3
+    batch_size = 5
     const1 = const_.repeat(batch_size,1,1,1)
 
     vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
@@ -229,9 +229,9 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             grads = grads.data.cpu().numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)
-            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch))
-            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(epoch))
-            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(epoch))
+            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch),nrow=n_row)
+            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(epoch),nrow=n_row)
+            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(epoch),nrow=n_row)
             with open(resultPath+'/Loss.txt', 'a+') as f:
                 print('i_'+str(epoch),file=f)
                 print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
