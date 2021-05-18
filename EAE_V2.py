@@ -62,7 +62,7 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     return loss_imgs, loss_info
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
-    Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
+    Gs = Generator(startf=64, maxf=512, layer_count=8, latent_size=512, channels=3) # cats: 32->512 layer_count=8 / cat: 64->256 layer_count=7
     #Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
     Gs.load_state_dict(torch.load('./pre-model/cars/cars512_Gs_dict.pth'))
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
