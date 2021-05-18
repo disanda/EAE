@@ -2,10 +2,7 @@
 #image space: MSE -> SSIM  -> Lpips -> Gram-Cam  
 #latent space: MSE -> Cosine Similarty -> Distribution Divergency
 #在训练时加入write比较
-##续：2021_May_18, 把损失函数统一放入函数
 import os
-from skimage import io
-import cv2
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
@@ -14,7 +11,7 @@ from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
 import metric.pytorch_ssim as pytorch_ssim
-from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation, mask2cam
+from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation
 import tensorboardX
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
@@ -62,16 +59,14 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     return loss_imgs, loss_info
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
-    Gs = Generator(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3) # cats: stratf 32->512 layer_count=8 / cat: startf 64->256 layer_count=7
-    #Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
+    Gs = Generator(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
     Gs.load_state_dict(torch.load('./pre-model/cars/cars512_Gs_dict.pth'))
     Gm = Mapping(num_layers=16, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-    #Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
-    Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth'))  
+    Gm.load_state_dict(torch.load('./pre-model/cars/cars512_Gm_dict.pth')) 
     Gm.buffer1 = avg_tensor
-    E = BE.BE(startf=32, maxf=512, layer_count=8, latent_size=512, channels=3)
-    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/pre-model/E_cat_v2_1_ep100000.pth'))
-    E.load_state_dict(torch.load('/_wmwang/mystyle/myStyle1/EAE/pre-model/E_cars512_ep90000_v1.pth')) # cars
+    E = BE.BE(startf=32, maxf=512, layer_count=8 , latent_size=512, channels=3)
+    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cars_v2/E_model_ep90000.pth'))
+    E.load_state_dict(torch.load('/_wmwang/mystyle/myStyle1/EAE/pre-model/E_cars512_ep90000_v1.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -79,20 +74,14 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     writer = tensor_writer
 
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
+    loss_all=0
+    loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
+    loss_kl = torch.nn.KLDivLoss()
+    ssim_loss = pytorch_ssim.SSIM()
 
     batch_size = 4
     const1 = const_.repeat(batch_size,1,1,1)
-
-    vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
-    final_layer = None
-    for name, m in vgg16.named_modules():
-        if isinstance(m, nn.Conv2d):
-            final_layer = name
-    grad_cam_plus_plus = GradCamPlusPlus(vgg16, final_layer)
-    gbp = GuidedBackPropagation(vgg16)
-
-
     it_d = 0
     for epoch in range(0,250001):
         set_seed(epoch%30000)
@@ -107,54 +96,39 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         E_optimizer.zero_grad()
 
-#Image Space
-        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2,None)
-        #imgs1.retain_grad()
-        #imgs2.retain_grad()
-        imgs1_ = imgs1.detach().clone()
-        imgs1_.requires_grad = True
-        imgs2_ = imgs2.detach().clone()
-        imgs2_.requires_grad = True
-        grad_1 = gbp(imgs1_) # [n,c,h,w]
-        grad_2 = gbp(imgs2_)
+#Image Space 
 
-    ##--Mask_Cam
-        mask_1 = mask_1.cuda().float()
-        mask_1.requires_grad=True
-        mask_2 = mask_2.cuda().float()
-        mask_2.requires_grad=True
-        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
-
+##loss1 最小区域
+        imgs_small_1 = imgs1[:,:,imgs1.shape[2]//20:-imgs1.shape[2]//20,imgs1.shape[3]//20:-imgs1.shape[3]//20].clone() # w,h
+        imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20].clone()
+        loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        loss_mask.backward(retain_graph=True)
+        loss_small.backward(retain_graph=True)
         E_optimizer.step()
 
-    ##--Grad
-        grad_1 = grad_1.cuda().float()
-        grad_1.requires_grad=True
-        grad_2 = grad_2.cuda().float()
-        grad_2.requires_grad=True
-        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
 
+#loss2 中等区域
+        imgs_medium_1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10].clone()
+        imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].clone()
+        loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        loss_grad.backward(retain_graph=True)
+        loss_medium.backward(retain_graph=True)
         E_optimizer.step()
 
-    ##--Image
+#loss3 原图区域
         loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
-#Latent Space
-    ##--W
+#Latent_space
+## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
         E_optimizer.zero_grad()
         loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
-    ##--C
+## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
@@ -163,29 +137,29 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         print('i_'+str(epoch))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]')
         print('---------ImageSpace--------')
-        print('loss_mask_info: %s'%loss_mask_info)
-        print('loss_grad_info: %s'%loss_grad_info)
+        print('loss_small_info: %s'%loss_small_info)
+        print('loss_medium_info: %s'%loss_medium_info)
         print('loss_imgs_info: %s'%loss_imgs_info)
         print('---------LatentSpace--------')
         print('loss_w_info: %s'%loss_w_info)
         print('loss_c_info: %s'%loss_c_info)
 
         it_d += 1
-        writer.add_scalar('loss_mask_mse', loss_mask_info[0][0], global_step=it_d)
-        writer.add_scalar('loss_mask_mse_mean', loss_mask_info[0][1], global_step=it_d)
-        writer.add_scalar('loss_mask_mse_std', loss_mask_info[0][2], global_step=it_d)
-        writer.add_scalar('loss_mask_kl', loss_mask_info[1], global_step=it_d)
-        writer.add_scalar('loss_mask_cosine', loss_mask_info[2], global_step=it_d)
-        writer.add_scalar('loss_mask_ssim', loss_mask_info[3], global_step=it_d)
-        writer.add_scalar('loss_mask_lpips', loss_mask_info[4], global_step=it_d)
+        writer.add_scalar('loss_small_mse', loss_small_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_samll_mse_mean', loss_small_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_samll_mse_std', loss_small_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_samll_kl', loss_small_info[1], global_step=it_d)
+        writer.add_scalar('loss_samll_cosine', loss_small_info[2], global_step=it_d)
+        writer.add_scalar('loss_samll_ssim', loss_small_info[3], global_step=it_d)
+        writer.add_scalar('loss_samll_lpips', loss_small_info[4], global_step=it_d)
 
-        writer.add_scalar('loss_grad_mse', loss_grad_info[0][0], global_step=it_d)
-        writer.add_scalar('loss_grad_mse_mean', loss_grad_info[0][1], global_step=it_d)
-        writer.add_scalar('loss_grad_mse_std', loss_grad_info[0][2], global_step=it_d)
-        writer.add_scalar('loss_grad_kl', loss_grad_info[1], global_step=it_d)
-        writer.add_scalar('loss_grad_cosine', loss_grad_info[2], global_step=it_d)
-        writer.add_scalar('loss_grad_ssim', loss_grad_info[3], global_step=it_d)
-        writer.add_scalar('loss_grad_lpips', loss_grad_info[4], global_step=it_d)
+        writer.add_scalar('loss_medium_mse', loss_medium_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_medium_mse_mean', loss_medium_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_medium_mse_std', loss_medium_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_medium_kl', loss_medium_info[1], global_step=it_d)
+        writer.add_scalar('loss_medium_cosine', loss_medium_info[2], global_step=it_d)
+        writer.add_scalar('loss_medium_ssim', loss_medium_info[3], global_step=it_d)
+        writer.add_scalar('loss_medium_lpips', loss_medium_info[4], global_step=it_d)
 
         writer.add_scalar('loss_imgs_mse', loss_imgs_info[0][0], global_step=it_d)
         writer.add_scalar('loss_imgs_mse_mean', loss_imgs_info[0][1], global_step=it_d)
@@ -211,36 +185,25 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_c_ssim', loss_c_info[3], global_step=it_d)
         writer.add_scalar('loss_c_lpips', loss_c_info[4], global_step=it_d)
 
-        writer.add_scalars('Image_Space_MSE', {'loss_mask_mse':loss_imgs_info[0][0],'loss_grad_mse':loss_grad_info[0][0],'loss_img_mse':loss_imgs_info[0][0]}, global_step=it_d)
-        writer.add_scalars('Image_Space_KL', {'loss_mask_kl':loss_mask_info[1],'loss_grad_cosine':loss_grad_info[1],'loss_imgs_cosine':loss_imgs_info[1]}, global_step=it_d)
-        writer.add_scalars('Image_Space_Cosine', {'loss_mask_cosine':loss_mask_info[2],'loss_grad_cosine':loss_grad_info[2],'loss_imgs_cosine':loss_imgs_info[2]}, global_step=it_d)
-        writer.add_scalars('Image_Space_SSIM', {'loss_mask_ssim':loss_mask_info[3],'loss_grad_ssim':loss_grad_info[3],'loss_img_ssim':loss_imgs_info[3]}, global_step=it_d)
-        writer.add_scalars('Image_Space_Cosine', {'loss_mask_cosine':loss_mask_info[4],'loss_grad_cosine':loss_grad_info[4],'loss_imgs_cosine':loss_imgs_info[4]}, global_step=it_d)
-        writer.add_scalars('Image_Space_Lpips', {'loss_mask_lpips':loss_mask_info[4],'loss_grad_lpips':loss_grad_info[4],'loss_img_lpips':loss_imgs_info[4]}, global_step=it_d)
+        writer.add_scalars('Image_Space_MSE', {'loss_small_mse':loss_small_info[0][0],'loss_medium_mse':loss_medium_info[0][0],'loss_img_mse':loss_imgs_info[0][0]}, global_step=it_d)
+        writer.add_scalars('Image_Space_KL', {'loss_small_kl':loss_small_info[1],'loss_medium_kl':loss_medium_info[1],'loss_imgs_kl':loss_imgs_info[1]}, global_step=it_d)
+        writer.add_scalars('Image_Space_Cosine', {'loss_samll_cosine':loss_small_info[2],'loss_medium_cosine':loss_medium_info[2],'loss_imgs_cosine':loss_imgs_info[2]}, global_step=it_d)
+        writer.add_scalars('Image_Space_SSIM', {'loss_small_ssim':loss_small_info[3],'loss_medium_ssim':loss_medium_info[3],'loss_img_ssim':loss_imgs_info[3]}, global_step=it_d)
+        writer.add_scalars('Image_Space_Lpips', {'loss_small_lpips':loss_small_info[4],'loss_medium_lpips':loss_medium_info[4],'loss_img_lpips':loss_imgs_info[4]}, global_step=it_d)
         writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
-        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_w_info[0][1],'loss_c_mse_std':loss_w_info[0][2],'loss_c_kl':loss_w_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
+        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
+
 
         if epoch % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(epoch),nrow=n_row) # nrow=3
-            heatmap1,cam1 = mask2cam(mask_1,imgs1)
-            heatmap2,cam2 = mask2cam(mask_2,imgs2)
-            heatmap=torch.cat((heatmap1,heatmap1))
-            cam=torch.cat((cam1,cam2))
-            grads = torch.cat((grad_1,grad_2))
-            grads = grads.data.cpu().numpy() # [n,c,h,w]
-            grads -= np.max(np.min(grads), 0)
-            grads /= np.max(grads)
-            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch),nrow=n_row)
-            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(epoch),nrow=n_row)
-            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(epoch),nrow=n_row)
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
             with open(resultPath+'/Loss.txt', 'a+') as f:
                 print('i_'+str(epoch),file=f)
                 print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
                 print('---------ImageSpace--------',file=f)
-                print('loss_mask_info: %s'%loss_mask_info,file=f)
-                print('loss_grad_info: %s'%loss_grad_info,file=f)
+                print('loss_small_info: %s'%loss_small_info,file=f)
+                print('loss_medium_info: %s'%loss_medium_info,file=f)
                 print('loss_imgs_info: %s'%loss_imgs_info,file=f)
                 print('---------LatentSpace--------',file=f)
                 print('loss_w_info: %s'%loss_w_info,file=f)
@@ -250,10 +213,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-
-    if not os.path.exists('./result'): os.mkdir('./result')
-
-    resultPath = "./result/D2E_Car_v2"
+    resultPath = "./result/D2E_Car_v1"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
@@ -262,10 +222,6 @@ if __name__ == "__main__":
     resultPath1_2 = resultPath+"/models"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
-    resultPath_grad_cam = resultPath+"/grad_cam"
-    if not os.path.exists(resultPath_grad_cam): os.mkdir(resultPath_grad_cam)
-
-    #center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
     center_tensor = torch.load('./pre-model/cars/cars512-center_tensor.pt')
     layer_num = 16 # 14->256 / 16 -> 512  / 18->1024 
     layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
@@ -275,6 +231,7 @@ if __name__ == "__main__":
     writer_path = os.path.join(resultPath, './summaries')
     if not os.path.exists(writer_path): os.mkdir(writer_path)
     writer = tensorboardX.SummaryWriter(writer_path)
+
 
     train(avg_tensor=center_tensor, coefs=coefs_, tensor_writer=writer)
 
