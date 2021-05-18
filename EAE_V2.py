@@ -99,7 +99,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         latents = torch.randn(batch_size, 512) #[32, 512]
         with torch.no_grad(): #这里需要生成图片和变量
             w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
-            imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
+            imgs1 = Gs.forward(w1,7) # 7->512 / 6->256
 
         const2,w2 = E(imgs1.cuda())
 
