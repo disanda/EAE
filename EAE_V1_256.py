@@ -98,17 +98,17 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 #Image Space 
 
 ##loss1 最小区域
-        imgs_small_1 = imgs1[:,:,imgs1.shape[2]//20:-imgs1.shape[2]//20,imgs1.shape[3]//20:-imgs1.shape[3]//20] # w,h
-        imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20]
+        imgs_small_1 = imgs1[:,:,imgs1.shape[2]//20:-imgs1.shape[2]//20,imgs1.shape[3]//20:-imgs1.shape[3]//20].clone() # w,h
+        imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20].clone()
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        imgs_small.backward(retain_graph=True)
+        loss_small.backward(retain_graph=True)
         E_optimizer.step()
 
 
 #loss2 中等区域
-        imgs_medium_1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10]
-        imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10]
+        imgs_medium_1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10].clone()
+        imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
         loss_medium.backward(retain_graph=True)
@@ -143,14 +143,14 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         print('loss_w_info: %s'%loss_w_info)
         print('loss_c_info: %s'%loss_c_info)
 
-       it_d += 1
-        writer.add_scalar('loss_small_mse', loss_samll_info[0][0], global_step=it_d)
-        writer.add_scalar('loss_samll_mse_mean', loss_samll_info[0][1], global_step=it_d)
-        writer.add_scalar('loss_samll_mse_std', loss_samll_info[0][2], global_step=it_d)
-        writer.add_scalar('loss_samll_kl', loss_samll_info[1], global_step=it_d)
-        writer.add_scalar('loss_samll_cosine', loss_samll_info[2], global_step=it_d)
-        writer.add_scalar('loss_samll_ssim', loss_samll_info[3], global_step=it_d)
-        writer.add_scalar('loss_samll_lpips', loss_samll_info[4], global_step=it_d)
+        it_d += 1
+        writer.add_scalar('loss_small_mse', loss_small_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_samll_mse_mean', loss_small_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_samll_mse_std', loss_small_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_samll_kl', loss_small_info[1], global_step=it_d)
+        writer.add_scalar('loss_samll_cosine', loss_small_info[2], global_step=it_d)
+        writer.add_scalar('loss_samll_ssim', loss_small_info[3], global_step=it_d)
+        writer.add_scalar('loss_samll_lpips', loss_small_info[4], global_step=it_d)
 
         writer.add_scalar('loss_medium_mse', loss_medium_info[0][0], global_step=it_d)
         writer.add_scalar('loss_medium_mse_mean', loss_medium_info[0][1], global_step=it_d)
@@ -198,16 +198,15 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
             torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
             with open(resultPath+'/Loss.txt', 'a+') as f:
-                        print('i_(epoch)'+str(epoch),file=f)
-                        print('---------ImageSpace--------',file=f)
-                        print('loss_small_mse:'+str(loss_small_mse.item())+'--loss_small_ssim:'+str(loss_small_ssim.item())+'--loss_small_lpips:'+str(loss_small_lpips.item()),file=f)
-                        print('loss_medium_mse:'+str(loss_medium_mse.item())+'--loss_medium_ssim:'+str(loss_medium_ssim.item())+'--loss_medium_lpips:'+str(loss_medium_lpips.item()),file=f)
-                        print('loss_img_mse:'+str(loss_img_mse.item())+'--loss_img_ssim:'+str(loss_img_ssim.item())+'--loss_img_lpips:'+str(loss_img_lpips.item()),file=f)
-                        print('---------LatentSpace--------',file=f)
-                        print('loss_w:'+str(loss_w.item())+'--loss_w_m:'+str(loss_w_m.item())+'--loss_w_s:'+str(loss_w_s.item()),file=f)
-                        print('loss_kl_w:'+str(loss_kl_w.item())+'--loss_cosine_w:'+str(loss_cosine_w.item()),file=f)
-                        print('loss_c:'+str(loss_c.item())+'--loss_c_m:'+str(loss_c_m.item())+'--loss_c_s:'+str(loss_c_s.item()),file=f)
-                        print('loss_kl_c:'+str(loss_kl_c.item())+'--loss_cosine_c:'+str(loss_cosine_c.item()),file=f)
+                print('i_'+str(epoch),file=f)
+                print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
+                print('---------ImageSpace--------',file=f)
+                print('loss_small_info: %s'%loss_small_info,file=f)
+                print('loss_medium_info: %s'%loss_medium_info,file=f)
+                print('loss_imgs_info: %s'%loss_imgs_info,file=f)
+                print('---------LatentSpace--------',file=f)
+                print('loss_w_info: %s'%loss_w_info,file=f)
+                print('loss_c_info: %s'%loss_c_info,file=f)
             if epoch % 5000 == 0:
                 torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
