@@ -30,7 +30,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_CAT_v2)/models/E_model_ep100000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/pre-model/E_cat_v2_1_ep100000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
