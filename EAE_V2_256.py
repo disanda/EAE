@@ -70,7 +70,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_CAT_v2_1/models/E_model_ep10000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_Cat_v2_1_1/models/E_model_ep60000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -103,8 +103,21 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         const2,w2 = E(imgs1.cuda())
 
         imgs2=Gs.forward(w2,6)
-
+        
         E_optimizer.zero_grad()
+
+#Latent Space
+    ##--W
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
+        E_optimizer.step()
+
+    ##--C
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_c.backward(retain_graph=True)
+        E_optimizer.step()
 
 #Image Space
         mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
@@ -117,6 +130,8 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         imgs2_.requires_grad = True
         grad_1 = gbp(imgs1_) # [n,c,h,w]
         grad_2 = gbp(imgs2_)
+        heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
+        heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
     ##--Mask_Cam
         mask_1 = mask_1.cuda().float()
@@ -146,17 +161,15 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
-#Latent Space
-    ##--W
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
+    ##--Grad_CAM from mask
+        cam_1 = cam_1.cuda().float()
+        cam_1.requires_grad=True
+        cam_2 = cam_2.cuda().float()
+        cam_2.requires_grad=True
+        loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
 
-    ##--C
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
+        loss_Gcam.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -165,6 +178,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         print('loss_mask_info: %s'%loss_mask_info)
         print('loss_grad_info: %s'%loss_grad_info)
         print('loss_imgs_info: %s'%loss_imgs_info)
+        print('loss_Gcam_info: %s'%loss_Gcam_info)
         print('---------LatentSpace--------')
         print('loss_w_info: %s'%loss_w_info)
         print('loss_c_info: %s'%loss_c_info)
@@ -194,6 +208,14 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalar('loss_imgs_ssim', loss_imgs_info[3], global_step=it_d)
         writer.add_scalar('loss_imgs_lpips', loss_imgs_info[4], global_step=it_d)
 
+        writer.add_scalar('loss_Gcam', loss_Gcam_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_Gcam_mean', loss_Gcam_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_Gcam_std', loss_Gcam_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_Gcam_kl', loss_Gcam_info[1], global_step=it_d)
+        writer.add_scalar('loss_Gcam_cosine', loss_Gcam_info[2], global_step=it_d)
+        writer.add_scalar('loss_Gcam_ssim', loss_Gcam_info[3], global_step=it_d)
+        writer.add_scalar('loss_Gcam_lpips', loss_Gcam_info[4], global_step=it_d)
+
         writer.add_scalar('loss_w_mse', loss_w_info[0][0], global_step=it_d)
         writer.add_scalar('loss_w_mse_mean', loss_w_info[0][1], global_step=it_d)
         writer.add_scalar('loss_w_mse_std', loss_w_info[0][2], global_step=it_d)
@@ -222,10 +244,8 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
             torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(epoch),nrow=n_row) # nrow=3
-            heatmap1,cam1 = mask2cam(mask_1,imgs1)
-            heatmap2,cam2 = mask2cam(mask_2,imgs2)
-            heatmap=torch.cat((heatmap1,heatmap1))
-            cam=torch.cat((cam1,cam2))
+            heatmap=torch.cat((heatmap_1,heatmap_2))
+            cam=torch.cat((cam_1,cam_2))
             grads = torch.cat((grad_1,grad_2))
             grads = grads.data.cpu().numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
@@ -240,6 +260,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
                 print('loss_mask_info: %s'%loss_mask_info,file=f)
                 print('loss_grad_info: %s'%loss_grad_info,file=f)
                 print('loss_imgs_info: %s'%loss_imgs_info,file=f)
+                print('loss_Gcam_info: %s'%loss_Gcam_info,file=f)
                 print('---------LatentSpace--------',file=f)
                 print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
@@ -251,7 +272,7 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
 
-    resultPath = "./result/D2E_Cat_v2_1_1"
+    resultPath = "./result/D2E_Cat_v2_1_2"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
