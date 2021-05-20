@@ -6,8 +6,8 @@ import os
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
-import module.EAE_model.BE_v2 as BE
-#import module.EAE_model.D2E_v3 as BE
+#import module.EAE_model.BE_v2 as BE
+import module.EAE_model.D2E_v3 as BE
 from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
@@ -213,7 +213,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-    resultPath = "./result/D2E_v1_bedroom_Eq_model(v2)"
+    resultPath = "./result/D2E_v1_bedroom_Common_model(v3)"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
