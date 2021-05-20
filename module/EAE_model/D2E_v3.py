@@ -126,7 +126,7 @@ class BE(nn.Module):
             inputs = min(maxf, inputs) 
             outputs = min(maxf, outputs)
             #self.layer_to_resolution[i] = resolution
-            resolution /=2
+            #resolution /=2
             self.decode_block.append(block)
         #self.FromRGB = from_RGB
 
