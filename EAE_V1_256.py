@@ -83,7 +83,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     loss_kl = torch.nn.KLDivLoss()
     ssim_loss = pytorch_ssim.SSIM()
 
-    batch_size = 3
+    batch_size = 4
     const1 = const_.repeat(batch_size,1,1,1)
     it_d = 0
     for epoch in range(0,250001):
