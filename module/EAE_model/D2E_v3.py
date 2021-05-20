@@ -57,6 +57,7 @@ class BEBlock(nn.Module):
             self.bias_2.zero_()
 
     def forward(self, x):
+        print(x.shape)
         mean1 = torch.mean(x, dim=[2, 3], keepdim=True) # [b, c, 1, 1]
         std1 = torch.sqrt(torch.mean((x - mean1) ** 2, dim=[2, 3], keepdim=True))  # [b, c, 1, 1]
         style1 = torch.cat((mean1, std1), dim=1) # [b,2c,1,1]
