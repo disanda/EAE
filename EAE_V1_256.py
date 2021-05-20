@@ -6,7 +6,8 @@ import os
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
-import module.EAE_model.BE_v2 as BE
+#import module.EAE_model.BE_v2 as BE
+import module.EAE_model.D2E_v3 as BE
 from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
@@ -60,19 +61,22 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
-    Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
+    Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth')) #256*256 cat
+    Gs.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth')) # 256*256 bedroom
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-    Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth')) 
+    Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
+    Gm.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth')) # 256*256 bedroom
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
     const_ = Gs.const
     writer = tensor_writer
 
-    E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
+    #E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
+    E_optimizer = torch.optim.Adam(E.parameters(),, lr=0.002, betas=(0.0, 0.99))
     loss_all=0
     loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
@@ -212,7 +216,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
-    resultPath = "./result/D2E_Cat_v1_1"
+    resultPath = "./result/D2E_v1_bedroom_Common_model"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
@@ -221,7 +225,7 @@ if __name__ == "__main__":
     resultPath1_2 = resultPath+"/models"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
-    center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
+    center_tensor = torch.load('./pre-model/bedroom/bedrooms256_tensor.pt')
     layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
     layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
     ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]

@@ -3,6 +3,8 @@
 #latent space: MSE -> Cosine Similarty -> Distribution Divergency
 #在训练时加入write比较
 ##续：2021_May_18, 把损失函数统一放入函数
+## V_2_1_2, imagespace加了Gcam(image+mask)
+
 import os
 from skimage import io
 import cv2
@@ -70,7 +72,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_Cat_v2_1_1/models/E_model_ep60000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_Cat_v2_1_1_noGcam/models/E_model_ep60000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
