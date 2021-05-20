@@ -77,11 +77,8 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
     #E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
     E_optimizer = torch.optim.Adam(E.parameters(), lr=0.002, betas=(0.0, 0.99))
-    loss_all=0
-    loss_mse = torch.nn.MSELoss()
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
-    loss_kl = torch.nn.KLDivLoss()
-    ssim_loss = pytorch_ssim.SSIM()
+
 
     batch_size = 4
     const1 = const_.repeat(batch_size,1,1,1)
