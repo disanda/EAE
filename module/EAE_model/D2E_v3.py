@@ -41,7 +41,7 @@ class BEBlock(nn.Module):
         self.inver_mod2 = torch.nn.Linear(2 * inputs, latent_size)
         if has_last_conv:
             if fused_scale:
-                self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 2, 1, bias=False, transform_kernel=True)
+                self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 2, 1, bias=False)
             else:
                 self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 1, 1, bias=False)
         self.fused_scale = fused_scale
