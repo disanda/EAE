@@ -103,15 +103,14 @@ class BE(nn.Module):
         self.maxf = maxf
         self.startf = startf
         self.latent_size = latent_size
-        self.layer_to_resolution = [0 for _ in range(layer_count)]
+        #self.layer_to_resolution = [0 for _ in range(layer_count)]
         self.decode_block = nn.ModuleList()
         self.layer_count = layer_count
         inputs = startf # 16 
         outputs = startf*2
-
-        fused_scale = False
-        resolution = 1024
+        #resolution = 1024
         # from_RGB = nn.ModuleList()
+        fused_scale = False
         self.FromRGB = FromRGB(channels, inputs)
 
         for i in range(layer_count):
@@ -126,7 +125,7 @@ class BE(nn.Module):
             outputs = outputs*2
             inputs = min(maxf, inputs) 
             outputs = min(maxf, outputs)
-            self.layer_to_resolution[i] = resolution
+            #self.layer_to_resolution[i] = resolution
             resolution /=2
             self.decode_block.append(block)
         #self.FromRGB = from_RGB
@@ -136,7 +135,6 @@ class BE(nn.Module):
     def forward(self, x, block_num=9):
         #x = self.FromRGB[9-block_num](x) #每个block一个
         x = self.FromRGB(x)
-        print(x.shape)
         w = torch.tensor(0)
         for i in range(9-block_num,self.layer_count):
             x,w1,w2 = self.decode_block[i](x)
