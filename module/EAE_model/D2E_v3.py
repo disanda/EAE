@@ -31,14 +31,14 @@ class BEBlock(nn.Module):
         self.noise_weight_1.data.zero_()
         self.bias_1 = nn.Parameter(torch.Tensor(1, inputs, 1, 1))
         self.instance_norm_1 = nn.InstanceNorm2d(inputs, affine=False, eps=1e-8)
-        self.inver_mod1 = torch.nn.Linear(2 * inputs, latent_size, gain=1) # [n, 2c] -> [n,512]
+        self.inver_mod1 = torch.nn.Linear(2 * inputs, latent_size) # [n, 2c] -> [n,512]
         self.conv_1 = torch.nn.Conv2d(inputs, inputs, 3, 1, 1, bias=False)
 
         self.noise_weight_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.noise_weight_2.data.zero_()
         self.bias_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.instance_norm_2 = nn.InstanceNorm2d(inputs, affine=False, eps=1e-8)
-        self.inver_mod2 = torch.nn.Linear(2 * inputs, latent_size, gain=1)
+        self.inver_mod2 = torch.nn.Linear(2 * inputs, latent_size)
         if has_last_conv:
             if fused_scale:
                 self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 2, 1, bias=False, transform_kernel=True)
