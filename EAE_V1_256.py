@@ -61,10 +61,10 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 32->512 layer_count=8 / 64->256 layer_count=7
-    Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth')) #256*256 cat
-    Gs.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth')) # 256*256 bedroom
+    #Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth')) #256*256 cat
+    Gs.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gs_dict.pth')) # 256*256 bedroom
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-    Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
+    #Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
     Gm.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth')) # 256*256 bedroom
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
@@ -99,6 +99,19 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
         E_optimizer.zero_grad()
 
+#Latent_space
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
+        E_optimizer.step()
+
+## c
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_c.backward(retain_graph=True)
+        E_optimizer.step()
+
 #Image Space 
 
 ##loss1 最小区域
@@ -122,19 +135,6 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
-        E_optimizer.step()
-
-#Latent_space
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
-
-## c
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
