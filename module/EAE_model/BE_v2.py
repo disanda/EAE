@@ -96,14 +96,14 @@ class BE(nn.Module):
         inputs = startf # 16 
         outputs = startf*2
         resolution = 1024
-
-        from_RGB = nn.ModuleList()
+        self.FromRGB = FromRGB(channels, inputs)
+        #from_RGB = nn.ModuleList()
         for i in range(layer_count):
 
             has_last_conv = i+1 != layer_count
             fused_scale = resolution >= 128 # 在新的一层起初 fused_scale = flase, 完成上采样
 
-            from_RGB.append(FromRGB(channels, inputs))
+            #from_RGB.append(FromRGB(channels, inputs))
             block = BEBlock(inputs, outputs, latent_size, has_last_conv, fused_scale=fused_scale)
 
             inputs = inputs*2
@@ -114,11 +114,12 @@ class BE(nn.Module):
             resolution /=2
             self.decode_block.append(block)
 
-        self.FromRGB = from_RGB
+        #self.FromRGB = from_RGB
 
     #将w逆序，以保证和G的w顺序, block_num控制progressive
     def forward(self, x, block_num=9):
-        x = self.FromRGB[9-block_num](x)
+        #x = self.FromRGB[9-block_num](x) #不是progressive,去除多余的FromRGB
+        x = self.FromRGB(x)
         w = torch.tensor(0)
         for i in range(9-block_num,self.layer_count):
             x,w1,w2 = self.decode_block[i](x)
