@@ -109,17 +109,19 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.zero_grad()
 
 #Latent Space
-    ##--W
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
 
     ##--C
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
         E_optimizer.step()
+
+    ##--W
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
+        E_optimizer.step()
+
 
 #Image Space
         mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]

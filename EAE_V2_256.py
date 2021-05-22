@@ -65,14 +65,14 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
 
 def train(avg_tensor = None, coefs=0, tensor_writer=None):
     Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # cats: stratf 32->512 layer_count=8 / cat: startf 64->256 layer_count=7
-    Gs.load_state_dict(torch.load('./pre-model/cat/cat256_Gs_dict.pth'))
+    Gs.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gs_dict.pth'))
 
     Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-    Gm.load_state_dict(torch.load('./pre-model/cat/cat256_Gm_dict.pth'))
+    Gm.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth'))
 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_Cat_v2_1_1_noGcam/models/E_model_ep60000.pth'))
+    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_v1_bedroom_Eq_model(v2)/models/E_model_ep150000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -109,16 +109,16 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.zero_grad()
 
 #Latent Space
-    ##--W
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
-
     ##--C
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
+        E_optimizer.step()
+
+    ##--W
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
 #Image Space
@@ -240,7 +240,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         writer.add_scalars('Image_Space_SSIM', {'loss_mask_ssim':loss_mask_info[3],'loss_grad_ssim':loss_grad_info[3],'loss_img_ssim':loss_imgs_info[3]}, global_step=it_d)
         writer.add_scalars('Image_Space_Lpips', {'loss_mask_lpips':loss_mask_info[4],'loss_grad_lpips':loss_grad_info[4],'loss_img_lpips':loss_imgs_info[4]}, global_step=it_d)
         writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
-        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_w_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
+        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_c_info[2]}, global_step=it_d)
 
         if epoch % 100 == 0:
             n_row = batch_size
@@ -274,19 +274,19 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
 
-    resultPath = "./result/D2E_Cat_v2_1_2"
+    resultPath = "./result/D2Ev1_bedroom_v2_gofromv1-ep150000"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
     if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
 
-    resultPath1_2 = resultPath+"/models"
+    resultPath1_2 = resultPath+"/models_v1"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
     resultPath_grad_cam = resultPath+"/grad_cam"
     if not os.path.exists(resultPath_grad_cam): os.mkdir(resultPath_grad_cam)
 
-    center_tensor = torch.load('./pre-model/cat/cat256-center_tensor.pt')
+    center_tensor = torch.load('./pre-model/bedroom/bedrooms256_tensor.pt')
     layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
     layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
     ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]

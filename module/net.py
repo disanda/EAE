@@ -5,11 +5,11 @@ from torch.nn import functional as F
 from torch.nn import init
 from torch.nn.parameter import Parameter
 import numpy as np
+import sys
+sys.path.append('../')
 import module.lreq as ln
 import math
 import matplotlib.pyplot as plt
-import sys
-sys.path.append('../')
 from dlutils.pytorch import count_parameters, millify
 
 if False:

@@ -7,6 +7,7 @@ import torch
 import torchvision
 from module.net import * # Generator,Mapping
 import module.EAE_model.BE_v2 as BE
+import module.EAE_model.D2E_v3 as BE
 from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
@@ -122,16 +123,17 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
         E_optimizer.step()
 
 #Latent_space
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
 
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
+        E_optimizer.step()
+
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))

@@ -5,7 +5,7 @@
 # 改变了上采样，不在conv中完成
 # 改变了In,带参数的学习
 # 改变了了residual,和残差网络一致，另外旁路多了conv1处理通道和In学习参数
-
+# 经测试，不带Eq(Equalize Learning Rate)的参数层学习效果不好
 import torch
 import torch.nn as nn 
 from torch.nn import init
@@ -13,6 +13,7 @@ from torch.nn.parameter import Parameter
 import sys
 sys.path.append('../')
 from torch.nn import functional as F
+import module.lreq as ln
 
 # G 改 E, 实际上需要用G Block改出E block, 完成逆序对称，在同样位置还原style潜码
 # 比第0版多了残差, 每一层的两个(conv/line)输出的w1和w2合并为1个w
@@ -35,26 +36,26 @@ class BEBlock(nn.Module):
         self.noise_weight_1.data.zero_()
         self.bias_1 = nn.Parameter(torch.Tensor(1, inputs, 1, 1))
         self.instance_norm_1 = nn.InstanceNorm2d(inputs, affine=True, eps=1e-8)
-        self.inver_mod1 = torch.nn.Linear(2 * inputs, latent_size) # [n, 2c] -> [n,512]
-        self.conv_1 = torch.nn.Conv2d(inputs, inputs, 3, 1, 1, bias=False)
+        self.inver_mod1 = ln.Linear(2 * inputs, latent_size) # [n, 2c] -> [n,512]
+        self.conv_1 = ln.Conv2d(inputs, inputs, 3, 1, 1, bias=False)
 
         self.noise_weight_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.noise_weight_2.data.zero_()
         self.bias_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.instance_norm_2 = nn.InstanceNorm2d(outputs, affine=True, eps=1e-8)
-        self.inver_mod2 = torch.nn.Linear(2 * inputs, latent_size)
+        self.inver_mod2 = ln.Linear(2 * inputs, latent_size)
         if has_second_conv:
             if fused_scale:
-                self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 2, 1, bias=False)
+                self.conv_2 = ln.Conv2d(inputs, outputs, 3, 2, 1, bias=False)
             else:
-                self.conv_2 = torch.nn.Conv2d(inputs, outputs, 3, 1, 1, bias=False)
+                self.conv_2 = ln.Conv2d(inputs, outputs, 3, 1, 1, bias=False)
         self.fused_scale = fused_scale
         
         self.inputs = inputs
         self.outputs = outputs
 
         if self.inputs != self.outputs:
-            self.conv_3 = torch.nn.Conv2d(inputs, outputs, 1, 1, 0)
+            self.conv_3 = ln.Conv2d(inputs, outputs, 1, 1, 0)
             self.instance_norm_3 = nn.InstanceNorm2d(outputs, affine=True, eps=1e-8)
 
         with torch.no_grad():
