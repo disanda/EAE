@@ -11,7 +11,8 @@ import cv2
 import torch
 import torchvision
 from module.net import * # Generator,Mapping
-import module.EAE_model.BE_v2 as BE
+#import module.EAE_model.BE_v2 as BE
+import module.EAE_model.D2E_v3 as BE
 from module.custom_adam import LREQAdam
 import lpips
 from torch.nn import functional as F
@@ -72,7 +73,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
 
     Gm.buffer1 = avg_tensor
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-    E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_v1_bedroom_Eq_model(v2)/models/E_model_ep150000.pth'))
+    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/D2E_v1_bedroom_Eq_model(v2)/models/E_model_ep150000.pth'))
     Gs.cuda()
     #Gm.cuda()
     E.cuda()
@@ -82,7 +83,7 @@ def train(avg_tensor = None, coefs=0, tensor_writer=None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=0.0015, betas=(0.0, 0.99), weight_decay=0)
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
-    batch_size = 5
+    batch_size = 4
     const1 = const_.repeat(batch_size,1,1,1)
 
     vgg16 = torchvision.models.vgg16(pretrained=True).cuda()
@@ -274,13 +275,13 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
 
-    resultPath = "./result/D2Ev1_bedroom_v2_gofromv1-ep150000"
+    resultPath = "./result/D2Ev3_bedroom_v2(grad_cam)"
     if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
     if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
 
-    resultPath1_2 = resultPath+"/models_v1"
+    resultPath1_2 = resultPath+"/models"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
     resultPath_grad_cam = resultPath+"/grad_cam"
